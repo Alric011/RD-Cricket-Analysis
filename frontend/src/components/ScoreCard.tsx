@@ -55,9 +55,9 @@ export default function ScoreCard({ match }: ScoreCardProps) {
     >
       <Tabs defaultValue="SUMMARY" className="w-full">
         <TabsList className="w-full grid grid-cols-3 mb-6">
-          <TabsTrigger value="SUMMARY">Summary</TabsTrigger>
-          <TabsTrigger value="SCORECARD">Scorecard</TabsTrigger>
-          <TabsTrigger value="COMMENTARY">Commentary</TabsTrigger>
+          <TabsTrigger className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2 px-4 w-fit mx-auto rounded-lg shadow-md" value="SUMMARY">Summary</TabsTrigger>
+          <TabsTrigger className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2 px-4 w-fit mx-auto rounded-lg shadow-md" value="SCORECARD">Scorecard</TabsTrigger>
+          <TabsTrigger className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2 px-4 w-fit mx-auto rounded-lg shadow-md" value="RECOMMENDATIONS">Recommendations</TabsTrigger>
         </TabsList>
 
         <TabsContent value="SCORECARD" className="mt-2">
@@ -241,13 +241,13 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                           <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                             Top Scorer
                           </p>
-                          <h4 className="font-bold text-green-700 dark:text-green-400">Venkatesh Iyer</h4>
+                          <h4 className="font-bold text-green-700 dark:text-green-400">Sam Curran</h4>
                           <div className="flex items-center">
                             <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 mr-2">
-                              52 (26)
+                              63* (41)
                             </Badge>
                             <p className="text-xs text-gray-600 dark:text-gray-400">
-                              4 fours · 3 sixes
+                              5 fours · 3 sixes
                             </p>
                           </div>
                         </div>
@@ -276,13 +276,13 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                           <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                             Best Bowler
                           </p>
-                          <h4 className="font-bold text-blue-700 dark:text-blue-400">Shahbaz Ahmed</h4>
+                          <h4 className="font-bold text-blue-700 dark:text-blue-400">Sam Curran</h4>
                           <div className="flex items-center">
                             <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 mr-2">
-                              1 wicket
+                              2 wickets
                             </Badge>
                             <p className="text-xs text-gray-600 dark:text-gray-400">
-                              22 runs · 2.3 overs
+                              24 runs · 3 overs
                             </p>
                           </div>
                         </div>
@@ -333,7 +333,7 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                         <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
                           Toss
                         </div>
-                        <div className="flex-1 text-sm">KKR, elected to field</div>
+                        <div className="flex-1 text-sm">RR, elected to bat</div>
                       </div>
                     </CardContent>
                   </Card>
@@ -343,7 +343,7 @@ export default function ScoreCard({ match }: ScoreCardProps) {
           </Card>
         </TabsContent>
 
-        <TabsContent value="COMMENTARY" className="mt-2">
+        <TabsContent value="RECOMMENDATIONS" className="mt-2">
           <Card className="border-none shadow-lg overflow-hidden">
             <CardContent className="p-6">
               <motion.div 
@@ -377,10 +377,10 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                   transition={{ delay: 0.5, duration: 0.5 }}
                 >
                   <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">
-                    Commentary not available
+                    Recommendations not available
                   </h3>
                   <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    Live commentary is only available during the match.
+                    Live Recommendations will be available soon.
                   </p>
                 </motion.div>
               </motion.div>

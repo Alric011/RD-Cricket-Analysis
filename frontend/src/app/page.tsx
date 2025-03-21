@@ -155,19 +155,19 @@ export default function Home() {
                     <TabsList className="bg-blue-100/50 dark:bg-blue-900/20">
                       <TabsTrigger 
                         value="live"
-                        className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
+                        className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
                       >
                         Live Matches
                       </TabsTrigger>
                       <TabsTrigger 
                         value="upcoming"
-                        className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
+                        className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
                       >
                         Upcoming
                       </TabsTrigger>
                       <TabsTrigger 
                         value="recent"
-                        className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
+                        className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
                       >
                         Recent
                       </TabsTrigger>
@@ -302,14 +302,18 @@ export default function Home() {
                 <Card className="border-none shadow-lg bg-gradient-to-r from-blue-600 to-blue-500 text-white overflow-hidden">
                   <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between">
                     <div className="mb-4 md:mb-0">
-                      <h3 className="text-xl font-bold mb-2">IPL Fantasy League</h3>
-                      <p className="opacity-90">Create your dream team and compete with friends</p>
+                      <h3 className="text-xl font-bold mb-2">
+                        Live IPL Match Analysis
+                      </h3>
+                      <p className="opacity-90">
+                        Get insights and analysis for any IPL match in real time.
+                      </p>
                     </div>
                     <Button 
                       variant="secondary" 
-                      className="bg-white hover:bg-gray-100 text-blue-600"
+                      className="cursor-pointer bg-white hover:bg-gray-100 text-blue-600"
                     >
-                      Join Now
+                      Analyze Match
                     </Button>
                   </CardContent>
                 </Card>

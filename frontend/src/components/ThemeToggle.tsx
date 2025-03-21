@@ -25,7 +25,7 @@ export default function ThemeToggle() {
         variant="outline"
         size="icon"
         onClick={() => setTheme(isDark ? "light" : "dark")}
-        className="relative w-10 h-10 rounded-full bg-white dark:bg-gray-800 border-blue-100 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors duration-300"
+        className="cursor-pointer relative w-10 h-10 rounded-full bg-white dark:bg-gray-800 border-blue-100 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors duration-300"
         aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       >
         <motion.div
