@@ -7,14 +7,16 @@ import MatchCard from "../components/MatchCard";
 import ScoreCard from "../components/ScoreCard";
 import ThemeToggle from "../components/ThemeToggle";
 import { ChevronLeftIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "next-themes"
 
 export default function Home() {
   const [showDetail, setShowDetail] = useState(false);
+  const { theme } = useTheme();
 
   return (
     <div className="min-h-screen pb-10">
       <Head>
-        <title>IPL Match Center</title>
+        <title>IPL Match Analysis</title>
         <meta name="description" content="IPL T20 Cricket Match Statistics" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -31,7 +33,7 @@ export default function Home() {
               </button>
             )}
             <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-              IPL Match Center
+              IPL Match Analysis
             </h1>
           </div>
           <ThemeToggle />
@@ -42,7 +44,7 @@ export default function Home() {
         {!showDetail ? (
           <>
             <div className="mb-8">
-              <h2 className="text-2xl font-bold mb-4">Recent Matches</h2>
+              <h2 className="text-2xl font-bold mb-4">Live Matches</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <MatchCard
                   match={matchData}
@@ -54,12 +56,12 @@ export default function Home() {
 
             <div>
               <h2 className="text-2xl font-bold mb-4">Upcoming Matches</h2>
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-8 text-center shadow">
+              <div className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} rounded-lg p-8 text-center shadow`}>
                 <p className="text-gray-500 dark:text-gray-400">
-                  The IPL 2024 season has concluded.
+                  No upcoming matches scheduled.
                 </p>
                 <p className="text-gray-500 dark:text-gray-400 mt-1">
-                  Stay tuned for the next season.
+                  Stay tuned for exciting matches!
                 </p>
               </div>
             </div>
@@ -71,8 +73,7 @@ export default function Home() {
 
       <footer className="mt-12 container mx-auto px-4 py-4 border-t border-gray-200 dark:border-gray-800">
         <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-          © {new Date().getFullYear()} IPL Match Center — Not affiliated with
-          the official IPL
+          © {new Date().getFullYear()} IPL Match Analysis - All rights reserved.
         </p>
       </footer>
     </div>

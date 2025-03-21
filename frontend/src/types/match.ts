@@ -54,6 +54,36 @@ export interface Innings {
   fallOfWickets: string[];
 }
 
+export interface Toss {
+  winner: string;
+  decision: string;
+}
+
+export interface Officials {
+  umpires: string[];
+  thirdUmpire: string;
+  matchReferee: string;
+  reserveUmpire?: string;
+}
+
+export interface BallByBallData {
+  innings: number;
+  over: number;
+  ball: number;
+  batter: string;
+  nonStriker: string;
+  bowler: string;
+  batterRuns: number;
+  extraRuns: number;
+  totalRuns: number;
+  wicket: boolean;
+  wicketType?: string;
+  playerOut?: string;
+  dismissedBy?: string;
+  inningsScore: number;
+  inningsWickets: number;
+}
+
 export interface Match {
   id: string;
   date: string;
@@ -65,4 +95,8 @@ export interface Match {
   winningTeam: string;
   winMargin: string;
   highlightsUrl?: string;
+  playerOfMatch?: string;
+  toss?: Toss;
+  officials?: Officials;
+  ballByBallData?: BallByBallData[];
 }
