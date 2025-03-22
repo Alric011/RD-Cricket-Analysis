@@ -243,6 +243,7 @@ def compute_historical_stats(csv_path):
     bowler_stats.drop(columns=['Wicket'], inplace=True)
     return batter_stats, bowler_stats
 
+# Modify the predict_momentum_live function to correctly use the ball_features
 def predict_momentum_live(df, ball_features, cum_features, ctx_features, chase_features):
     """Predicts momentum from live match data using the last ball's info."""
     with open('ball_scaler.pkl', 'rb') as f:
@@ -259,22 +260,51 @@ def predict_momentum_live(df, ball_features, cum_features, ctx_features, chase_f
     seq_length = 10
     if len(df) < seq_length:
         raise ValueError("Not enough live data to form a sequence.")
-    X_seq = df[ball_features].values
-    X_seq_scaled = ball_scaler.transform(X_seq)
+    
+    # Make sure ball_features is a list of column names, not scaler objects
+    if isinstance(ball_features, list) and all(isinstance(feat, str) for feat in ball_features):
+        X_seq = df[ball_features].values
+        X_seq_scaled = ball_scaler.transform(X_seq)
+    else:
+        # If ball_features is not a list of strings, load the proper features
+        with open('ball_features.pkl', 'rb') as f:
+            proper_ball_features = pickle.load(f)
+        X_seq = df[proper_ball_features].values
+        X_seq_scaled = ball_scaler.transform(X_seq)
+    
     sequence = X_seq_scaled[-seq_length:]
     sequence = np.expand_dims(sequence, axis=0)
     
-    current_cum = df.iloc[-1][cum_features].values.reshape(1, -1)
+    # Similar checks for other feature sets
+    if isinstance(cum_features, list) and all(isinstance(feat, str) for feat in cum_features):
+        current_cum = df.iloc[-1][cum_features].values.reshape(1, -1)
+    else:
+        with open('cum_features.pkl', 'rb') as f:
+            proper_cum_features = pickle.load(f)
+        current_cum = df.iloc[-1][proper_cum_features].values.reshape(1, -1)
+    
     current_cum_scaled = cum_scaler.transform(current_cum)
     
     venue_val = df.iloc[-1]['Venue']
     venue_index = le.transform([venue_val])[0] if venue_val in le.classes_ else 0
     venue_enc = np.array([[venue_index]])
     
-    ctx_numeric = df.iloc[-1][ctx_features[1:]].values.reshape(1, -1)
+    if isinstance(ctx_features, list) and all(isinstance(feat, str) for feat in ctx_features):
+        ctx_numeric = df.iloc[-1][ctx_features[1:]].values.reshape(1, -1)
+    else:
+        with open('ctx_features.pkl', 'rb') as f:
+            proper_ctx_features = pickle.load(f)
+        ctx_numeric = df.iloc[-1][proper_ctx_features[1:]].values.reshape(1, -1)
+    
     ctx_numeric_scaled = ctx_scaler.transform(ctx_numeric)
     
-    chase_vals = df.iloc[-1][chase_features].values.reshape(1, -1)
+    if isinstance(chase_features, list) and all(isinstance(feat, str) for feat in chase_features):
+        chase_vals = df.iloc[-1][chase_features].values.reshape(1, -1)
+    else:
+        with open('chase_features.pkl', 'rb') as f:
+            proper_chase_features = pickle.load(f)
+        chase_vals = df.iloc[-1][proper_chase_features].values.reshape(1, -1)
+    
     chase_scaled = chase_scaler.transform(chase_vals)
     
     model = load_model('momentum_model.h5', custom_objects={'mse': 'mse'})
@@ -414,7 +444,17 @@ def generate_live_report(live_csv, historical_csv, seq_length, ball_features, cu
     
     # Model-Based Momentum Prediction.
     report_lines.append("=== Model-Based Momentum Prediction ===")
-    model_momentum = predict_momentum_live(live_df, ball_features, cum_features, ctx_features, chase_features)
+    # Load the feature lists from the saved files
+    with open('ball_features.pkl', 'rb') as f:
+        ball_features_list = pickle.load(f)
+    with open('cum_features.pkl', 'rb') as f:
+        cum_features_list = pickle.load(f)
+    with open('ctx_features.pkl', 'rb') as f:
+        ctx_features_list = pickle.load(f)
+    with open('chase_features.pkl', 'rb') as f:
+        chase_features_list = pickle.load(f)
+
+    model_momentum = predict_momentum_live(live_df, ball_features_list, cum_features_list, ctx_features_list, chase_features_list)
     report_lines.append(f"Predicted Momentum: {model_momentum:.2f} / 100")
     report_lines.append("")
     
@@ -474,7 +514,9 @@ if __name__ == "__main__":
     historical_batter_stats, historical_bowler_stats = compute_historical_stats(historical_csv)
     
     # Step 3: Generate the live match report.
-    report = generate_live_report(live_csv, historical_csv, seq_length, ball_scaler, cum_scaler, ctx_scaler, chase_scaler, le, ball_features, cum_features, ctx_features, chase_features)
+    report = generate_live_report(live_csv, historical_csv, seq_length, 
+                             ball_features, cum_features, ctx_features, chase_features, 
+                             ball_scaler, cum_scaler, ctx_scaler, chase_scaler, le)
     
     print("\n================ FULL LIVE MATCH REPORT ================\n")
     print(report)

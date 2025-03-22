@@ -1,10 +1,10 @@
-# app.py
 import io
 import pandas as pd
 import numpy as np
 import pickle
 from flask import Flask, request, jsonify
 from tensorflow.keras.models import load_model
+from flask_cors import CORS
 
 # -----------------------------
 # Global Constants and Preloads
@@ -30,7 +30,7 @@ with open('cum_features.pkl', 'rb') as f:
     cum_features = pickle.load(f)
 with open('ctx_features.pkl', 'rb') as f:
     ctx_features = pickle.load(f)
-# (If you have chase features saved separately, load them as well; if not, you can define them.)
+# Define chase features
 chase_features = ['Is_Chasing', 'Required Run Rate', 'Chase Differential']
 
 # Load the pre-trained momentum model.
@@ -157,7 +157,7 @@ def generate_live_report_from_df(live_df):
     live_batter.columns = ['Live_Total_Runs', 'Live_Balls_Faced', 'Live_Runs_Contributed']
     live_batter['Live_Strike_Rate'] = (live_batter['Live_Total_Runs'] / live_batter['Live_Balls_Faced'] * 100).round(2)
     boundaries = live_df[live_df['Batter Runs'].isin([4,6])].groupby('Batter').size()
-    live_batter['Boundaries'] = boundaries.fillna(0).astype(int)
+    live_batter['Boundaries'] = boundaries.reindex(live_batter.index).fillna(0).astype(int)
     
     report_lines.append("=== Live Batter Analysis ===")
     for batter in live_batter.index:
@@ -245,9 +245,12 @@ def generate_live_report_from_df(live_df):
     report_lines.append("")
     
     # Model-Based Momentum Prediction.
-    report_lines.append("=== Model-Based Momentum Prediction ===")
-    model_momentum = predict_momentum_live(live_df, ball_features, cum_features, ctx_features, chase_features)
-    report_lines.append(f"Predicted Momentum: {model_momentum:.2f} / 100")
+    try:
+        report_lines.append("=== Model-Based Momentum Prediction ===")
+        model_momentum = predict_momentum_live(live_df)
+        report_lines.append(f"Predicted Momentum: {model_momentum:.2f} / 100")
+    except ValueError as e:
+        report_lines.append(f"Momentum Prediction Error: {str(e)}")
     report_lines.append("")
     
     # Recommendations.
@@ -263,44 +266,188 @@ def generate_live_report_from_df(live_df):
 # Flask API
 # -----------------------------
 app = Flask(__name__)
+CORS(app)
 
-@app.route('/report', methods=['POST'])
+@app.route('/report', methods=['GET'])
 def report_api():
     """
-    Expects a file upload with key 'live_csv' (the live match CSV).
-    Returns a JSON response with the generated report.
+    GET endpoint that reads data from a specified CSV file path on the server.
+    Returns a structured JSON response with organized report sections.
     """
-    print(request.files)
-    if 'live_csv' not in request.files:
-        return jsonify({"error": "No file 'live_csv' provided."}), 400
-    file = request.files['live_csv']
     try:
-        live_df = pd.read_csv(io.StringIO(file.read().decode('utf-8')))
+        live_df = pd.read_csv("over20.csv")
     except Exception as e:
         return jsonify({"error": f"Error reading CSV: {str(e)}"}), 400
     
     try:
-        report_text = generate_live_report_from_df(live_csv=None, historical_csv=HISTORICAL_CSV, seq_length=SEQ_LENGTH,
-                                           ball_features=ball_features, cum_features=cum_features,
-                                           ctx_features=ctx_features, chase_features=chase_features,
-                                           ball_scaler=ball_scaler, cum_scaler=cum_scaler,
-                                           ctx_scaler=ctx_scaler, chase_scaler=chase_scaler, le=le)
-        # Note: Since generate_live_report expects a file path, we modify it here:
-        # Instead, we pass the live_df directly to our helper:
-        report_text = generate_live_report(live_df)
+        # Compute features for the dataframe
+        live_df = compute_live_features(live_df, TOTAL_BALLS)
+        
+        # Ensure required contextual numeric columns exist
+        ctx_numeric = ['Batter_Historical_Avg', 'Bowler_Historical_Economy', 
+                   'Batter_vs_Bowler_Avg', 'Team_Powerplay_Performance', 'Match_Phase']
+        for col in ctx_numeric:
+            if col not in live_df.columns:
+                live_df[col] = 0
+        
+        # --- Match Summary ---
+        match_summary = {
+            'total_runs': int(live_df['Runs From Ball'].sum()),
+            'total_wickets': int(live_df['Wicket'].sum()),
+            'total_balls': len(live_df),
+            'overs': round(len(live_df) / 6, 2),
+            'current_run_rate': round(live_df['Runs From Ball'].sum() / (len(live_df) / 6) if len(live_df) > 0 else 0, 2)
+        }
+        
+        # --- Batter Analysis ---
+        live_batter = live_df.groupby('Batter').agg({
+            'Batter Runs': ['sum', 'count'],
+            'Runs From Ball': 'sum'
+        })
+        live_batter.columns = ['Live_Total_Runs', 'Live_Balls_Faced', 'Live_Runs_Contributed']
+        live_batter['Live_Strike_Rate'] = (live_batter['Live_Total_Runs'] / live_batter['Live_Balls_Faced'] * 100).round(2)
+        boundaries = live_df[live_df['Batter Runs'].isin([4,6])].groupby('Batter').size()
+        live_batter['Boundaries'] = boundaries.reindex(live_batter.index).fillna(0).astype(int)
+        
+        batters_analysis = []
+        for batter in live_batter.index:
+            live_info = live_batter.loc[batter]
+            batter_data = {
+                'name': batter,
+                'live_stats': {
+                    'runs': int(live_info['Live_Total_Runs']),
+                    'balls_faced': int(live_info['Live_Balls_Faced']),
+                    'strike_rate': float(live_info['Live_Strike_Rate']),
+                    'boundaries': int(live_info['Boundaries'])
+                }
+            }
+            
+            if batter in historical_batter_stats.index:
+                hist_info = historical_batter_stats.loc[batter]
+                batter_data['historical_stats'] = {
+                    'runs': int(hist_info['Hist_Total_Runs']),
+                    'strike_rate': float(hist_info['Hist_Strike_Rate'])
+                }
+                
+                if live_info['Live_Strike_Rate'] < hist_info['Hist_Strike_Rate']:
+                    batter_data['insight'] = "Underperforming relative to historical average."
+                else:
+                    batter_data['insight'] = "Performing at or above historical norms."
+            else:
+                batter_data['historical_stats'] = None
+                batter_data['insight'] = "Historical data not available."
+                
+            batters_analysis.append(batter_data)
+        
+        # --- Bowler Analysis ---
+        live_bowler = live_df.groupby('Bowler').agg({
+            'Runs From Ball': 'sum',
+            'Wicket': 'sum',
+            'Ball': 'count'
+        })
+        live_bowler.rename(columns={'Ball': 'Live_Balls_Bowled'}, inplace=True)
+        live_bowler['Live_Overs'] = live_bowler['Live_Balls_Bowled'] / 6.0
+        live_bowler['Live_Economy'] = (live_bowler['Runs From Ball'] / live_bowler['Live_Overs']).round(2)
+        live_bowler['Live_Wickets'] = live_bowler['Wicket'].astype(int)
+        live_bowler.drop(columns=['Wicket'], inplace=True)
+        
+        bowlers_analysis = []
+        for bowler in live_bowler.index:
+            live_info = live_bowler.loc[bowler]
+            bowler_data = {
+                'name': bowler,
+                'live_stats': {
+                    'runs_conceded': int(live_info['Runs From Ball']),
+                    'overs': float(live_info['Live_Overs']),
+                    'economy': float(live_info['Live_Economy']),
+                    'wickets': int(live_info['Live_Wickets'])
+                }
+            }
+            
+            if bowler in historical_bowler_stats.index:
+                hist_info = historical_bowler_stats.loc[bowler]
+                bowler_data['historical_stats'] = {
+                    'economy': float(hist_info['Hist_Economy']),
+                    'wickets': int(hist_info['Hist_Wickets'])
+                }
+                
+                if live_info['Live_Economy'] > hist_info['Hist_Economy']:
+                    bowler_data['insight'] = "Bowling economy is higher than historical average."
+                else:
+                    bowler_data['insight'] = "Bowling is within historical norms."
+            else:
+                bowler_data['historical_stats'] = None
+                bowler_data['insight'] = "Historical data not available."
+                
+            bowlers_analysis.append(bowler_data)
+        
+        # --- Partnership Analysis ---
+        partnerships = []
+        current_partnership = {'batsmen': set(), 'runs': 0, 'balls': 0}
+        for idx, row in live_df.iterrows():
+            current_partnership['batsmen'].add(row['Batter'])
+            current_partnership['runs'] += row['Runs From Ball']
+            current_partnership['balls'] += 1
+            if row['Wicket'] == 1:
+                if current_partnership['balls'] > 0:
+                    partnerships.append({
+                        'batsmen': sorted(list(current_partnership['batsmen'])),
+                        'runs': int(current_partnership['runs']),
+                        'balls': int(current_partnership['balls']),
+                        'run_rate': round(current_partnership['runs'] / current_partnership['balls'], 2) if current_partnership['balls'] > 0 else 0
+                    })
+                current_partnership = {'batsmen': set(), 'runs': 0, 'balls': 0}
+        
+        if current_partnership['balls'] > 0:
+            partnerships.append({
+                'batsmen': sorted(list(current_partnership['batsmen'])),
+                'runs': int(current_partnership['runs']),
+                'balls': int(current_partnership['balls']),
+                'run_rate': round(current_partnership['runs'] / current_partnership['balls'], 2) if current_partnership['balls'] > 0 else 0
+            })
+        
+        # --- Event Probability Calculations ---
+        total_balls = len(live_df)
+        boundary_balls = len(live_df[live_df['Batter Runs'].isin([4,6])])
+        wicket_balls = len(live_df[live_df['Wicket'] == 1])
+        dot_balls = len(live_df[live_df['Runs From Ball'] == 0])
+        
+        probabilities = {
+            'boundary': round(boundary_balls / total_balls, 2) if total_balls > 0 else 0,
+            'wicket': round(wicket_balls / total_balls, 2) if total_balls > 0 else 0,
+            'dot_ball': round(dot_balls / total_balls, 2) if total_balls > 0 else 0
+        }
+        
+        # --- Model-Based Momentum Prediction ---
+        momentum = None
+        try:
+            momentum = float(predict_momentum_live(live_df))
+        except ValueError as e:
+            momentum = str(e)
+        
+        # --- Recommendations ---
+        recommendations = [
+            "Batters underperforming relative to historical averages may need to adjust shot selection.",
+            "Bowlers with higher live economy than historical figures should consider altering their length/line.",
+            "Partnership breakdowns may suggest reordering the batting lineup.",
+            "Probabilistic trends indicate pressure points—tactical adjustments are recommended accordingly."
+        ]
+        
+        # Construct the final structured response
+        response = {
+            "match_summary": match_summary,
+            "batters_analysis": batters_analysis,
+            "bowlers_analysis": bowlers_analysis,
+            "partnerships": partnerships,
+            "probabilities": probabilities,
+            "momentum": 50 if pd.isna(momentum) else momentum,
+            "recommendations": recommendations
+        }
+        
+        return jsonify(response)
+        
     except Exception as e:
         return jsonify({"error": f"Error generating report: {str(e)}"}), 500
-    return jsonify({"report": report_text})
-
-def generate_live_report(live_df):
-    """
-    Helper that uses the live DataFrame to generate the report.
-    """
-    return generate_live_report_from_df(live_csv=None, historical_csv=HISTORICAL_CSV, seq_length=SEQ_LENGTH,
-                                ball_features=ball_features, cum_features=cum_features,
-                                ctx_features=ctx_features, chase_features=chase_features,
-                                ball_scaler=ball_scaler, cum_scaler=cum_scaler,
-                                ctx_scaler=ctx_scaler, chase_scaler=chase_scaler, le=le)
-
+    
 if __name__ == '__main__':
     app.run(debug=True)

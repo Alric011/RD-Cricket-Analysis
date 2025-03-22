@@ -30,11 +30,11 @@ export default function ScoreCard({ match }: ScoreCardProps) {
 
   const fadeInUp = {
     hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       y: 0,
-      transition: { duration: 0.5 }
-    }
+      transition: { duration: 0.5 },
+    },
   };
 
   const staggerContainer = {
@@ -42,13 +42,13 @@ export default function ScoreCard({ match }: ScoreCardProps) {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
-      }
-    }
+        staggerChildren: 0.1,
+      },
+    },
   };
 
   return (
-    <motion.div 
+    <motion.div
       className="w-full dark:text-white text-gray-800"
       initial="hidden"
       animate="visible"
@@ -56,9 +56,24 @@ export default function ScoreCard({ match }: ScoreCardProps) {
     >
       <Tabs defaultValue="SUMMARY" className="w-full">
         <TabsList className="w-full grid grid-cols-3 mb-6">
-          <TabsTrigger className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2 px-4 w-fit mx-auto rounded-lg shadow-md" value="SUMMARY">Summary</TabsTrigger>
-          <TabsTrigger className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2 px-4 w-fit mx-auto rounded-lg shadow-md" value="SCORECARD">Scorecard</TabsTrigger>
-          <TabsTrigger className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2 px-4 w-fit mx-auto rounded-lg shadow-md" value="RECOMMENDATIONS">Recommendations</TabsTrigger>
+          <TabsTrigger
+            className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2 px-4 w-fit mx-auto rounded-lg shadow-md"
+            value="SUMMARY"
+          >
+            Summary
+          </TabsTrigger>
+          <TabsTrigger
+            className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2 px-4 w-fit mx-auto rounded-lg shadow-md"
+            value="SCORECARD"
+          >
+            Scorecard
+          </TabsTrigger>
+          <TabsTrigger
+            className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2 px-4 w-fit mx-auto rounded-lg shadow-md"
+            value="RECOMMENDATIONS"
+          >
+            Recommendations
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="SCORECARD" className="mt-2">
@@ -67,18 +82,18 @@ export default function ScoreCard({ match }: ScoreCardProps) {
               <Tabs
                 value={activeInnings === 0 ? "innings1" : "innings2"}
                 className="w-full"
-                onValueChange={(value) => 
+                onValueChange={(value) =>
                   setActiveInnings(value === "innings1" ? 0 : 1)
                 }
               >
                 <TabsList className="w-full grid grid-cols-2 bg-transparent">
-                  <TabsTrigger 
+                  <TabsTrigger
                     value="innings1"
                     className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 dark:data-[state=active]:border-blue-400"
                   >
                     {innings1.team.name}
                   </TabsTrigger>
-                  <TabsTrigger 
+                  <TabsTrigger
                     value="innings2"
                     className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 dark:data-[state=active]:border-blue-400"
                   >
@@ -89,7 +104,7 @@ export default function ScoreCard({ match }: ScoreCardProps) {
             </div>
 
             <CardContent className="p-6">
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5 }}
@@ -135,11 +150,11 @@ export default function ScoreCard({ match }: ScoreCardProps) {
         <TabsContent value="SUMMARY" className="space-y-6 mt-2">
           <Card className="border-none shadow-lg overflow-hidden">
             <CardContent className="p-6">
-              <motion.div 
+              <motion.div
                 className="flex justify-between items-center mb-8"
                 variants={fadeInUp}
               >
-                <motion.div 
+                <motion.div
                   className="flex items-center"
                   whileHover={{ scale: 1.02 }}
                   transition={{ type: "spring", stiffness: 400, damping: 10 }}
@@ -153,23 +168,25 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                     />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold">{innings1.team.shortName}</h2>
+                    <h2 className="text-2xl font-bold">
+                      {innings1.team.shortName}
+                    </h2>
                     <p className="text-xl">
-                      {innings1.score}/{innings1.wickets} 
+                      {innings1.score}/{innings1.wickets}
                       <span className="text-gray-500 dark:text-gray-400 text-base ml-1">
                         ({innings1.overs})
                       </span>
                     </p>
                   </div>
                 </motion.div>
-                
+
                 <div className="text-center">
                   <div className="relative w-12 h-12 mx-auto bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold">
                     VS
                   </div>
                 </div>
-                
-                <motion.div 
+
+                <motion.div
                   className="flex items-center"
                   whileHover={{ scale: 1.02 }}
                   transition={{ type: "spring", stiffness: 400, damping: 10 }}
@@ -179,7 +196,7 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                       {innings2.team.shortName}
                     </h2>
                     <p className="text-xl text-right">
-                      {innings2.score}/{innings2.wickets} 
+                      {innings2.score}/{innings2.wickets}
                       <span className="text-gray-500 dark:text-gray-400 text-base ml-1">
                         ({innings2.overs})
                       </span>
@@ -196,7 +213,7 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                 </motion.div>
               </motion.div>
 
-              <motion.div 
+              <motion.div
                 className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 rounded-lg mb-8 shadow-md"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -207,7 +224,7 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                 </p>
               </motion.div>
 
-              <motion.div 
+              <motion.div
                 className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8"
                 variants={staggerContainer}
                 initial="hidden"
@@ -222,10 +239,14 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <motion.div 
+                      <motion.div
                         className="flex items-center p-3 bg-green-50 dark:bg-green-900/10 rounded-md border border-green-100 dark:border-green-900/20"
                         whileHover={{ x: 5 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 300,
+                          damping: 20,
+                        }}
                       >
                         <div className="mr-4 bg-green-100 dark:bg-green-800/30 rounded-full p-2 text-green-600 dark:text-green-400">
                           <svg
@@ -242,9 +263,14 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                           <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                             Top Scorer
                           </p>
-                          <h4 className="font-bold text-green-700 dark:text-green-400">Sam Curran</h4>
+                          <h4 className="font-bold text-green-700 dark:text-green-400">
+                            Sam Curran
+                          </h4>
                           <div className="flex items-center">
-                            <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 mr-2">
+                            <Badge
+                              variant="outline"
+                              className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 mr-2"
+                            >
                               63* (41)
                             </Badge>
                             <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -254,10 +280,14 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                         </div>
                       </motion.div>
 
-                      <motion.div 
+                      <motion.div
                         className="flex items-center p-3 bg-blue-50 dark:bg-blue-900/10 rounded-md border border-blue-100 dark:border-blue-900/20"
                         whileHover={{ x: 5 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 300,
+                          damping: 20,
+                        }}
                       >
                         <div className="mr-4 bg-blue-100 dark:bg-blue-800/30 rounded-full p-2 text-blue-600 dark:text-blue-400">
                           <svg
@@ -277,9 +307,14 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                           <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                             Best Bowler
                           </p>
-                          <h4 className="font-bold text-blue-700 dark:text-blue-400">Sam Curran</h4>
+                          <h4 className="font-bold text-blue-700 dark:text-blue-400">
+                            Sam Curran
+                          </h4>
                           <div className="flex items-center">
-                            <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 mr-2">
+                            <Badge
+                              variant="outline"
+                              className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 mr-2"
+                            >
                               2 wickets
                             </Badge>
                             <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -346,7 +381,8 @@ export default function ScoreCard({ match }: ScoreCardProps) {
 
         <TabsContent value="RECOMMENDATIONS" className="mt-2">
           <Card className="border-none shadow-lg overflow-hidden">
-            <CardContent className="p-6">
+            <CricketAnalytics />
+            {/* <CardContent className="p-6">
               <motion.div 
                 className="text-center py-12"
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -385,8 +421,8 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                   </p>
                 </motion.div>
               </motion.div>
-              <CricketAnalytics />
-            </CardContent>
+              
+            </CardContent> */}
           </Card>
         </TabsContent>
       </Tabs>

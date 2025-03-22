@@ -1,0 +1,253 @@
+{
+  "meta": {
+    "data_version": "1.1.0",
+    "created": "2024-05-15",
+    "revision": 1
+  },
+  "info": {
+    "balls_per_over": 6,
+    "city": "Guwahati",
+    "dates": ["2024-05-15"],
+    "event": {
+      "name": "Indian Premier League",
+      "match_number": 65
+    },
+    "gender": "male",
+    "match_type": "T20",
+    "officials": {
+      "match_referees": ["Shakti Singh"],
+      "reserve_umpires": ["R Rajesh Kannan"],
+      "tv_umpires": ["AK Chaudhary"],
+      "umpires": ["R Pandit", "MV Saidharshan Kumar"]
+    },
+    "outcome": {
+      "winner": "Punjab Kings",
+      "by": {
+        "wickets": 5
+      }
+    },
+    "overs": 20,
+    "player_of_match": ["SM Curran"],
+    "players": {
+      "Rajasthan Royals": [
+        "YBK Jaiswal",
+        "T Kohler-Cadmore",
+        "SV Samson",
+        "R Parag",
+        "R Ashwin",
+        "Dhruv Jurel",
+        "R Powell",
+        "D Ferreira",
+        "TA Boult",
+        "Avesh Khan",
+        "Sandeep Sharma",
+        "YS Chahal"
+      ],
+      "Punjab Kings": [
+        "Arshdeep Singh",
+        "P Simran Singh",
+        "JM Bairstow",
+        "RR Rossouw",
+        "Shashank Singh",
+        "SM Curran",
+        "JM Sharma",
+        "Ashutosh Sharma",
+        "Harpreet Brar",
+        "HV Patel",
+        "NT Ellis",
+        "RD Chahar"
+      ]
+    },
+    "registry": {
+      "people": {
+        "AK Chaudhary": "fdcc6236",
+        "Arshdeep Singh": "244048f6",
+        "Ashutosh Sharma": "84d9c311",
+        "Avesh Khan": "eef2536f",
+        "D Ferreira": "f0af99a7",
+        "Dhruv Jurel": "bcf325d2",
+        "HV Patel": "f986ca1a",
+        "Harpreet Brar": "c05edf8e",
+        "JM Bairstow": "abb83e27",
+        "JM Sharma": "800d2d97",
+        "MV Saidharshan Kumar": "54b6007b",
+        "NT Ellis": "9eb1455b",
+        "P Simran Singh": "9418198b",
+        "R Ashwin": "495d42a5",
+        "R Pandit": "8a604384",
+        "R Parag": "04a418e8",
+        "R Powell": "650d5e49",
+        "R Rajesh Kannan": "c9062c3e",
+        "RD Chahar": "2ed569a0",
+        "RR Rossouw": "cad00a4d",
+        "SM Curran": "e94915e6",
+        "SV Samson": "a4cc73aa",
+        "Sandeep Sharma": "ce820073",
+        "Shakti Singh": "eb90d319",
+        "Shashank Singh": "26989d80",
+        "T Kohler-Cadmore": "f836b33d",
+        "TA Boult": "a818c1be",
+        "YBK Jaiswal": "6c19c6e5",
+        "YS Chahal": "57ee1fde"
+      }
+    },
+    "season": "2024",
+    "team_type": "club",
+    "teams": ["Rajasthan Royals", "Punjab Kings"],
+    "toss": {
+      "decision": "bat",
+      "winner": "Rajasthan Royals"
+    },
+    "venue": "Barsapara Cricket Stadium, Guwahati"
+  },
+  "innings": [
+    {
+      "team": "Rajasthan Royals",
+      "overs": [
+        {
+          "over": 0,
+          "deliveries": [
+            {
+              "batter": "YBK Jaiswal",
+              "bowler": "SM Curran",
+              "non_striker": "T Kohler-Cadmore",
+              "runs": {
+                "batter": 4,
+                "extras": 0,
+                "total": 4
+              }
+            },
+            {
+              "batter": "YBK Jaiswal",
+              "bowler": "SM Curran",
+              "non_striker": "T Kohler-Cadmore",
+              "runs": {
+                "batter": 0,
+                "extras": 0,
+                "total": 0
+              }
+            },
+            {
+              "batter": "YBK Jaiswal",
+              "bowler": "SM Curran",
+              "non_striker": "T Kohler-Cadmore",
+              "runs": {
+                "batter": 0,
+                "extras": 0,
+                "total": 0
+              }
+            },
+            {
+              "batter": "YBK Jaiswal",
+              "bowler": "SM Curran",
+              "non_striker": "T Kohler-Cadmore",
+              "runs": {
+                "batter": 0,
+                "extras": 0,
+                "total": 0
+              },
+              "wickets": [
+                {
+                  "player_out": "YBK Jaiswal",
+                  "kind": "bowled"
+                }
+              ]
+            },
+            {
+              "batter": "SV Samson",
+              "bowler": "SM Curran",
+              "non_striker": "T Kohler-Cadmore",
+              "runs": {
+                "batter": 1,
+                "extras": 0,
+                "total": 1
+              }
+            },
+            {
+              "batter": "T Kohler-Cadmore",
+              "bowler": "SM Curran",
+              "non_striker": "SV Samson",
+              "runs": {
+                "batter": 4,
+                "extras": 0,
+                "total": 4
+              }
+            }
+          ]
+        },
+        {
+          "over": 1,
+          "deliveries": [
+            {
+              "batter": "SV Samson",
+              "bowler": "Arshdeep Singh",
+              "non_striker": "T Kohler-Cadmore",
+              "runs": {
+                "batter": 1,
+                "extras": 0,
+                "total": 1
+              }
+            },
+            {
+              "batter": "T Kohler-Cadmore",
+              "bowler": "Arshdeep Singh",
+              "non_striker": "SV Samson",
+              "runs": {
+                "batter": 0,
+                "extras": 0,
+                "total": 0
+              }
+            },
+            {
+              "batter": "T Kohler-Cadmore",
+              "bowler": "Arshdeep Singh",
+              "non_striker": "SV Samson",
+              "runs": {
+                "batter": 0,
+                "extras": 0,
+                "total": 0
+              }
+            },
+            {
+              "batter": "T Kohler-Cadmore",
+              "bowler": "Arshdeep Singh",
+              "non_striker": "SV Samson",
+              "runs": {
+                "batter": 1,
+                "extras": 0,
+                "total": 1
+              }
+            },
+            {
+              "batter": "SV Samson",
+              "bowler": "Arshdeep Singh",
+              "non_striker": "T Kohler-Cadmore",
+              "runs": {
+                "batter": 0,
+                "extras": 0,
+                "total": 0
+              }
+            },
+            {
+              "batter": "SV Samson",
+              "bowler": "Arshdeep Singh",
+              "non_striker": "T Kohler-Cadmore",
+              "runs": {
+                "batter": 4,
+                "extras": 0,
+                "total": 4
+              }
+            }
+          ]
+        }
+      ],
+      "powerplays": [
+        {
+          "from": 0.1,
+          "to": 5.6,
+          "type": "mandatory"
+        }
+      ]
+    }
+  ]
+}
