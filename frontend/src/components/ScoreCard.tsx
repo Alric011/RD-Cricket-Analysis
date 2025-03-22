@@ -16,6 +16,7 @@ import {
   InfoIcon,
   CoinsIcon,
 } from "lucide-react";
+import CricketAnalytics from "./CricketAnalytics";
 
 interface ScoreCardProps {
   match: Match;
@@ -384,6 +385,7 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                   </p>
                 </motion.div>
               </motion.div>
+              <CricketAnalytics />
             </CardContent>
           </Card>
         </TabsContent>
