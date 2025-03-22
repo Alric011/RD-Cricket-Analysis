@@ -245,6 +245,7 @@ const MatchSummary = ({ summary, momentum, recommendations }: any) => {
                         <YAxis />
                         <Tooltip
                           contentStyle={{
+                            color: "#000000",
                             backgroundColor: "rgba(255, 255, 255, 0.95)",
                             borderRadius: "8px",
                             boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
@@ -349,8 +350,7 @@ const BattersAnalysis = ({ batters }: any) => {
                   <motion.tr
                     key={i}
                     custom={i}
-                    className="hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer"
-                    whileHover={{ backgroundColor: "rgba(219, 234, 254, 0.4)" }}
+                    className="hover:bg-blue-100 dark:hover:bg-blue-900/10 cursor-pointer"
                   >
                     <TableCell className="font-medium">
                       <div className="flex flex-col">
@@ -470,8 +470,7 @@ const BowlersAnalysis = ({ bowlers }: any) => {
                   <motion.tr
                     key={i}
                     custom={i}
-                    className="hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer"
-                    whileHover={{ backgroundColor: "rgba(219, 234, 254, 0.4)" }}
+                    className="hover:bg-blue-100 dark:hover:bg-blue-900/10 cursor-pointer"
                   >
                     <TableCell className="font-medium">
                       <div className="flex flex-col">
@@ -581,6 +580,7 @@ const Partnerships = ({ partnerships }: any) => {
                     />
                     <Tooltip
                       contentStyle={{
+                        color: "#000000",
                         backgroundColor: "rgba(255, 255, 255, 0.95)",
                         borderRadius: "8px",
                         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
@@ -727,6 +727,7 @@ const PredictionsTab = ({ probabilities, momentum }: any) => {
                           <YAxis domain={[0, 100]} />
                           <Tooltip
                             contentStyle={{
+                              color: "#000000",
                               backgroundColor: "rgba(255, 255, 255, 0.95)",
                               borderRadius: "8px",
                               boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
@@ -1164,11 +1165,11 @@ const getDefaultBowlerInsight = (bowler: any) => {
 
 const getMomentumChartData = (momentum: any) => {
   // Generate historical momentum data for chart
-  if (momentum.status !== "success") {
+  if (!momentum) {
     return [{ name: "Current", value: 50 }];
   }
 
-  const currentValue = momentum.value;
+  const currentValue = momentum;
   // Generate synthetic historical data
   return [
     {
@@ -1176,37 +1177,37 @@ const getMomentumChartData = (momentum: any) => {
       value: Math.max(
         10,
         Math.min(90, currentValue + (Math.random() > 0.5 ? -15 : 15))
-      ),
+      ).toFixed(1),
     },
     {
       name: "4 overs ago",
       value: Math.max(
         10,
         Math.min(90, currentValue + (Math.random() > 0.5 ? -12 : 12))
-      ),
+      ).toFixed(1),
     },
     {
       name: "3 overs ago",
       value: Math.max(
         10,
         Math.min(90, currentValue + (Math.random() > 0.5 ? -8 : 8))
-      ),
+      ).toFixed(1),
     },
     {
       name: "2 overs ago",
       value: Math.max(
         10,
         Math.min(90, currentValue + (Math.random() > 0.5 ? -5 : 5))
-      ),
+      ).toFixed(1),
     },
     {
       name: "1 over ago",
       value: Math.max(
         10,
         Math.min(90, currentValue + (Math.random() > 0.5 ? -3 : 3))
-      ),
+      ).toFixed(1),
     },
-    { name: "Current", value: currentValue },
+    { name: "Current", value: currentValue.toFixed(1) },
   ];
 };
 
