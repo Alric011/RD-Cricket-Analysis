@@ -1,20 +1,26 @@
-import { BowlingPerformance, Player } from "../types/match";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-interface BowlingCardProps {
-  bowlingPerformances: BowlingPerformance[];
-  players: Player[];
+interface BowlerAnalysis {
+  name: string;
+  live_stats: {
+    overs: number;
+    runs_conceded: number;
+    wickets: number;
+    economy: number;
+  };
+  historical_stats: {
+    economy: number;
+    wickets: number;
+  };
+  insight: string;
 }
 
-export default function BowlingCard({
-  bowlingPerformances,
-  players,
-}: BowlingCardProps) {
-  const getPlayerById = (id: string) => {
-    return players.find((player) => player.id === id);
-  };
+interface BowlingCardProps {
+  bowlersAnalysis: BowlerAnalysis[];
+}
 
+export default function BowlingCard({ bowlersAnalysis }: BowlingCardProps) {
   const tableVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -90,8 +96,17 @@ export default function BowlingCard({
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-              {bowlingPerformances.map((performance, index) => {
-                const player = getPlayerById(performance.playerId);
+              {bowlersAnalysis.map((bowler, index) => {
+                const isCaptain = bowler.name === "JO Holder";
+                // Format overs to show correct decimal (.1 for 1 ball, .2 for 2 balls, etc.)
+                const formattedOvers = () => {
+                  const fullOvers = Math.floor(bowler.live_stats.overs);
+                  const balls = Math.round(
+                    (bowler.live_stats.overs - fullOvers) * 6
+                  );
+                  return `${fullOvers}.${balls}`;
+                };
+
                 return (
                   <motion.tr
                     key={index}
@@ -103,8 +118,8 @@ export default function BowlingCard({
                       <div className="flex items-center">
                         <div>
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {player?.name}
-                            {player?.isCaptain && (
+                            {bowler.name}
+                            {isCaptain && (
                               <span className="ml-1 text-xs font-medium text-blue-600 dark:text-blue-400">
                                 (C)
                               </span>
@@ -114,19 +129,19 @@ export default function BowlingCard({
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700 dark:text-gray-300">
-                      {performance.overs}
+                      {formattedOvers()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700 dark:text-gray-300">
-                      {performance.maidens}
+                      0
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700 dark:text-gray-300">
-                      {performance.runs}
+                      {bowler.live_stats.runs_conceded}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium text-blue-600 dark:text-blue-400">
-                      {performance.wickets}
+                      {bowler.live_stats.wickets}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700 dark:text-gray-300">
-                      {performance.economy.toFixed(2)}
+                      {bowler.live_stats.economy.toFixed(2)}
                     </td>
                   </motion.tr>
                 );

@@ -79,95 +79,8 @@ const scaleIn = {
   },
 };
 
-const CricketAnalytics = () => {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<any>(null);
+const CricketAnalytics = ({ data }: any) => {
   const [activeTab, setActiveTab] = useState<string>("summary");
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("http://127.0.0.1:5000/report");
-        const responseData = await response.json();
-        setData(responseData);
-        setError(null);
-      } catch (err: any) {
-        console.error("Error fetching cricket data:", err);
-        setError(err.response?.data || { message: err.message });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  if (loading) {
-    return (
-      <motion.div
-        className="flex flex-col items-center justify-center py-16 space-y-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-      >
-        <div className="relative w-16 h-16">
-          <motion.div
-            className="absolute top-0 left-0 w-full h-full border-4 border-blue-200 rounded-full"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-          />
-          <motion.div
-            className="absolute top-0 left-0 w-full h-full border-t-4 border-blue-600 rounded-full"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-          />
-        </div>
-        <p className="text-blue-600 font-medium">Loading match analytics...</p>
-      </motion.div>
-    );
-  }
-
-  if (error) {
-    return (
-      <motion.div
-        className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-800 p-6 text-center"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <motion.div
-          initial={{ scale: 0.8 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", stiffness: 400, damping: 10 }}
-        >
-          <AlertTriangleIcon className="mx-auto h-12 w-12 text-red-400 dark:text-red-300 mb-4" />
-        </motion.div>
-        <h3 className="text-lg font-semibold text-red-700 dark:text-red-300 mb-2">
-          Error loading match data
-        </h3>
-        <p className="text-red-600 dark:text-red-200">
-          {error.message || "Unknown error occurred"}
-        </p>
-        <p className="mt-4 text-sm text-red-500 dark:text-red-300">
-          Please check your connection and try again later
-        </p>
-      </motion.div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <motion.div
-        className="text-center py-12"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
-        No data available
-      </motion.div>
-    );
-  }
 
   return (
     <motion.div
@@ -279,12 +192,8 @@ const MatchSummary = ({ summary, momentum, recommendations }: any) => {
               >
                 <StatCard
                   label="Match Momentum"
-                  value={
-                    momentum.status === "success"
-                      ? `${momentum.value.toFixed(0)}%`
-                      : "N/A"
-                  }
-                  description={getMomentumDescription(momentum.value)}
+                  value={momentum ? `${momentum.toFixed(1)}%` : "N/A"}
+                  description={getMomentumDescription(momentum.toFixed(1))}
                   color="bg-gradient-to-br from-blue-500 to-blue-600"
                   icon={<TrendingUpIcon className="h-5 w-5 text-blue-100" />}
                 />
@@ -718,7 +627,7 @@ const Partnerships = ({ partnerships }: any) => {
                               {p.runs} runs
                             </Badge>
                             <Badge className="bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400">
-                              {p.run_rate.toFixed(2)} RPO
+                              {((p.runs / p.balls) * 6).toFixed(2)} RPO
                             </Badge>
                           </div>
                         </div>
@@ -739,7 +648,7 @@ const Partnerships = ({ partnerships }: any) => {
                           </div>
                           <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Run Rate
+                              Run Rate (Per Ball)
                             </p>
                             <p className="font-medium">
                               {p.run_rate.toFixed(2)}
@@ -747,12 +656,10 @@ const Partnerships = ({ partnerships }: any) => {
                           </div>
                           <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Control %
+                              RPO (Run rate Per Over)
                             </p>
                             <p className="font-medium">
-                              {p.control_percentage ||
-                                Math.floor(70 + Math.random() * 20)}
-                              %
+                              {((p.runs / p.balls) * 6).toFixed(2)}
                             </p>
                           </div>
                         </div>
@@ -1159,7 +1066,7 @@ const AnimatedProgressBar = ({ value, colorClass = "bg-blue-600" }: any) => {
 const getMomentumDescription = (momentum: number) => {
   if (momentum >= 80) return "Excellent momentum";
   if (momentum >= 60) return "Good momentum";
-  if (momentum >= 40) return "Steady";
+  if (momentum >= 40) return "Steady momentum";
   if (momentum >= 20) return "Losing momentum";
   return "Poor momentum";
 };

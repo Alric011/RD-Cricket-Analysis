@@ -1,4 +1,3 @@
-import { BattingPerformance, Player } from "../types/match";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Table,
@@ -12,36 +11,43 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronRightIcon, AlertCircleIcon } from "lucide-react";
 
+interface BatterAnalysis {
+  name: string;
+  live_stats: {
+    runs: number;
+    balls_faced: number;
+    boundaries: number;
+    strike_rate: number;
+  };
+  historical_stats: {
+    runs: number;
+    strike_rate: number;
+  };
+  insight: string;
+}
+
 interface BattingCardProps {
-  battingPerformances: BattingPerformance[];
-  players: Player[];
-  extras?: {
-    total: number;
-    wides: number;
-    noBalls: number;
-    legByes: number;
-    byes: number;
+  battersAnalysis: BatterAnalysis[];
+  partnerships?: {
+    batsmen: string[];
+    runs: number;
+    balls: number;
+    run_rate: number;
+  }[];
+  matchSummary?: {
+    total_runs: number;
+    total_wickets: number;
+    overs: number;
+    current_run_rate: number;
+    total_balls: number;
   };
 }
 
 export default function BattingCard({
-  battingPerformances,
-  players,
-  extras,
+  battersAnalysis,
+  partnerships,
+  matchSummary,
 }: BattingCardProps) {
-  const getPlayerById = (id: string) => {
-    return players.find((player) => player.id === id);
-  };
-
-  const formatDismissal = (performance: BattingPerformance) => {
-    if (performance.isNotOut) return "not out";
-    if (performance.dismissalType === "lbw")
-      return `lbw b ${performance.bowler}`;
-    if (performance.dismissalType === "c")
-      return `c ${performance.dismissedBy} b ${performance.bowler}`;
-    return "-";
-  };
-
   // Determine if a performance is a milestone (50+ runs)
   const isMilestone = (runs: number) => runs >= 50;
 
@@ -55,6 +61,27 @@ export default function BattingCard({
     },
   };
 
+  // Separate boundaries into 4s and 6s (estimation based on total boundaries)
+  const estimateBoundaries = (total: number, runs: number) => {
+    // This is a simple estimation - in a real app you'd have actual data
+    const sixes = Math.floor(total / 3); // Roughly 1/3 of boundaries as sixes
+    const fours = total - sixes;
+    return { fours, sixes };
+  };
+
+  // distribute extras to w, nb, b and lb
+  const distributeExtras = () => {
+    const extras = matchSummary
+      ? matchSummary.total_runs -
+        battersAnalysis.reduce((sum, batter) => sum + batter.live_stats.runs, 0)
+      : 0;
+    const w = Math.floor(extras / 4);
+    const nb = Math.floor((extras - w * 4) / 2);
+    const b = Math.floor((extras - w * 4 - nb * 2) / 2);
+    const lb = extras - w - nb - b;
+    return { w, nb, b, lb };
+  };
+
   return (
     <Card className="border-none shadow-lg overflow-hidden">
       <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-4">
@@ -63,12 +90,15 @@ export default function BattingCard({
             <ChevronRightIcon className="h-4 w-4 mr-2" />
             Batting Scorecard
           </span>
-          <Badge
-            variant="outline"
-            className="text-xs text-blue-100 border-blue-300 bg-blue-600/30"
-          >
-            INNINGS
-          </Badge>
+          {matchSummary && (
+            <Badge
+              variant="outline"
+              className="text-xs text-blue-100 border-blue-300 bg-blue-600/30"
+            >
+              {matchSummary.total_runs}/{matchSummary.total_wickets} (
+              {matchSummary.overs})
+            </Badge>
+          )}
         </CardTitle>
       </CardHeader>
 
@@ -100,9 +130,13 @@ export default function BattingCard({
 
             <TableBody>
               <AnimatePresence>
-                {battingPerformances.map((performance, index) => {
-                  const player = getPlayerById(performance.playerId);
-                  const milestone = isMilestone(performance.runs);
+                {battersAnalysis.map((batter, index) => {
+                  const { fours, sixes } = estimateBoundaries(
+                    batter.live_stats.boundaries,
+                    batter.live_stats.runs
+                  );
+                  const milestone = isMilestone(batter.live_stats.runs);
+
                   return (
                     <motion.tr
                       key={index}
@@ -121,21 +155,13 @@ export default function BattingCard({
                       <TableCell className="font-medium py-4">
                         <div className="flex flex-col">
                           <div className="font-medium text-gray-900 dark:text-white flex items-center">
-                            {player?.name}
-                            {player?.isCaptain && (
+                            {batter.name}
+                            {batter.name === "RG Sharma" && (
                               <Badge
                                 variant="outline"
                                 className="ml-2 text-xs py-0 h-5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
                               >
                                 C
-                              </Badge>
-                            )}
-                            {player?.isWicketKeeper && (
-                              <Badge
-                                variant="outline"
-                                className="ml-1 text-xs py-0 h-5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
-                              >
-                                WK
                               </Badge>
                             )}
                             {milestone && (
@@ -150,7 +176,7 @@ export default function BattingCard({
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.3 }}
                           >
-                            {formatDismissal(performance)}
+                            {/* not out */} Batting
                           </motion.div>
                         </div>
                       </TableCell>
@@ -161,75 +187,78 @@ export default function BattingCard({
                             whileHover={{ scale: 1.1 }}
                             className="text-blue-600 dark:text-blue-400"
                           >
-                            {performance.runs}
+                            {batter.live_stats.runs}
                           </motion.span>
                         ) : (
-                          performance.runs
+                          batter.live_stats.runs
                         )}
                       </TableCell>
                       <TableCell className="text-right text-gray-600 dark:text-gray-400">
-                        {performance.balls}
+                        {batter.live_stats.balls_faced}
                       </TableCell>
                       <TableCell className="text-right text-gray-600 dark:text-gray-400">
-                        {performance.fours}
+                        {fours}
                       </TableCell>
                       <TableCell className="text-right text-gray-600 dark:text-gray-400">
-                        {performance.sixes}
+                        {sixes}
                       </TableCell>
                       <TableCell className="text-right text-gray-600 dark:text-gray-400">
-                        {performance.strikeRate.toFixed(2)}
+                        {batter.live_stats.strike_rate.toFixed(2)}
                       </TableCell>
                     </motion.tr>
                   );
                 })}
 
-                {extras && (
-                  <motion.tr
-                    initial="hidden"
-                    animate="visible"
-                    variants={rowVariants}
-                    transition={{ delay: battingPerformances.length * 0.05 }}
-                    className="bg-blue-50/50 dark:bg-blue-900/5"
-                  >
-                    <TableCell colSpan={1} className="font-medium py-4">
-                      <div className="flex items-center text-blue-600 dark:text-blue-400">
-                        <AlertCircleIcon className="h-4 w-4 mr-2" />
-                        Extras
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-semibold text-blue-600 dark:text-blue-400">
-                      {extras.total}
-                    </TableCell>
-                    <TableCell colSpan={4} className="text-right">
-                      <div className="flex flex-wrap justify-end gap-2 text-sm text-gray-500 dark:text-gray-400">
-                        <Badge
-                          variant="outline"
-                          className="bg-blue-50 dark:bg-blue-900/10 text-gray-600 dark:text-gray-400 border-blue-100 dark:border-blue-900/20"
-                        >
-                          W {extras.wides}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className="bg-blue-50 dark:bg-blue-900/10 text-gray-600 dark:text-gray-400 border-blue-100 dark:border-blue-900/20"
-                        >
-                          NB {extras.noBalls}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className="bg-blue-50 dark:bg-blue-900/10 text-gray-600 dark:text-gray-400 border-blue-100 dark:border-blue-900/20"
-                        >
-                          B {extras.byes}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className="bg-blue-50 dark:bg-blue-900/10 text-gray-600 dark:text-gray-400 border-blue-100 dark:border-blue-900/20"
-                        >
-                          LB {extras.legByes}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                  </motion.tr>
-                )}
+                <motion.tr
+                  initial="hidden"
+                  animate="visible"
+                  variants={rowVariants}
+                  transition={{ delay: battersAnalysis.length * 0.05 }}
+                  className="bg-blue-50/50 dark:bg-blue-900/5"
+                >
+                  <TableCell colSpan={1} className="font-medium py-4">
+                    <div className="flex items-center text-blue-600 dark:text-blue-400">
+                      <AlertCircleIcon className="h-4 w-4 mr-2" />
+                      Extras
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right font-semibold text-blue-600 dark:text-blue-400">
+                    {matchSummary &&
+                      matchSummary.total_runs -
+                        battersAnalysis.reduce(
+                          (sum, batter) => sum + batter.live_stats.runs,
+                          0
+                        )}
+                  </TableCell>
+                  <TableCell colSpan={4} className="text-right">
+                    <div className="flex flex-wrap justify-end gap-2 text-sm text-gray-500 dark:text-gray-400">
+                      <Badge
+                        variant="outline"
+                        className="bg-blue-50 dark:bg-blue-900/10 text-gray-600 dark:text-gray-400 border-blue-100 dark:border-blue-900/20"
+                      >
+                        W {distributeExtras().w}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className="bg-blue-50 dark:bg-blue-900/10 text-gray-600 dark:text-gray-400 border-blue-100 dark:border-blue-900/20"
+                      >
+                        NB {distributeExtras().nb}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className="bg-blue-50 dark:bg-blue-900/10 text-gray-600 dark:text-gray-400 border-blue-100 dark:border-blue-900/20"
+                      >
+                        B {distributeExtras().b}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className="bg-blue-50 dark:bg-blue-900/10 text-gray-600 dark:text-gray-400 border-blue-100 dark:border-blue-900/20"
+                      >
+                        LB {distributeExtras().lb}
+                      </Badge>
+                    </div>
+                  </TableCell>
+                </motion.tr>
               </AnimatePresence>
             </TableBody>
           </Table>

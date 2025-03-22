@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Match } from "../types/match";
 import BattingCard from "./BattingCard";
 import BowlingCard from "./BowlingCard";
@@ -15,6 +15,11 @@ import {
   MapPinIcon,
   InfoIcon,
   CoinsIcon,
+  AlertTriangleIcon,
+  TrendingUpIcon,
+  ZapIcon,
+  TargetIcon,
+  AlertCircleIcon,
 } from "lucide-react";
 import CricketAnalytics from "./CricketAnalytics";
 
@@ -47,6 +52,107 @@ export default function ScoreCard({ match }: ScoreCardProps) {
     },
   };
 
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch("http://127.0.0.1:5000/report");
+        const responseData = await response.json();
+        setData(responseData);
+        setError(null);
+      } catch (err: any) {
+        console.error("Error fetching cricket data:", err);
+        setError(err.response?.data || { message: err.message });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <motion.div
+        className="flex flex-col items-center justify-center py-16 space-y-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="relative w-16 h-16">
+          <motion.div
+            className="absolute top-0 left-0 w-full h-full border-4 border-blue-200 rounded-full"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+          />
+          <motion.div
+            className="absolute top-0 left-0 w-full h-full border-t-4 border-blue-600 rounded-full"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+          />
+        </div>
+        <p className="text-blue-600 font-medium">Loading match analysis...</p>
+      </motion.div>
+    );
+  }
+
+  if (error) {
+    return (
+      <motion.div
+        className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-800 p-6 text-center"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <motion.div
+          initial={{ scale: 0.8 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 400, damping: 10 }}
+        >
+          <AlertTriangleIcon className="mx-auto h-12 w-12 text-red-400 dark:text-red-300 mb-4" />
+        </motion.div>
+        <h3 className="text-lg font-semibold text-red-700 dark:text-red-300 mb-2">
+          Error loading match data
+        </h3>
+        <p className="text-red-600 dark:text-red-200">
+          {error.message || "Unknown error occurred"}
+        </p>
+        <p className="mt-4 text-sm text-red-500 dark:text-red-300">
+          Please check your connection and try again later
+        </p>
+      </motion.div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <motion.div
+        className="text-center py-12"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
+        No data available
+      </motion.div>
+    );
+  }
+
+  // Get the top batter from API data
+  const topBatter = data.batters_analysis.sort(
+    (a: any, b: any) => b.live_stats.runs - a.live_stats.runs
+  )[0];
+
+  // Get the best bowler from API data - criteria: lowest economy with at least 1 wicket
+  const bestBowler = data.bowlers_analysis.sort((a: any, b: any) => {
+    if (a.live_stats.wickets === b.live_stats.wickets) {
+      return a.live_stats.economy - b.live_stats.economy;
+    }
+    return b.live_stats.wickets - a.live_stats.wickets;
+  })[0];
+
   return (
     <motion.div
       className="w-full dark:text-white text-gray-800"
@@ -70,9 +176,9 @@ export default function ScoreCard({ match }: ScoreCardProps) {
           </TabsTrigger>
           <TabsTrigger
             className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2 px-4 w-fit mx-auto rounded-lg shadow-md"
-            value="RECOMMENDATIONS"
+            value="ANALYSIS"
           >
-            Recommendations
+            Analysis
           </TabsTrigger>
         </TabsList>
 
@@ -104,45 +210,35 @@ export default function ScoreCard({ match }: ScoreCardProps) {
             </div>
 
             <CardContent className="p-6">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5 }}
-                key={activeInnings}
-              >
-                {activeInnings === 0 ? (
-                  <>
-                    <BattingCard
-                      battingPerformances={innings1.battingPerformances}
-                      players={innings1.team.players}
-                      extras={innings1.team.extras}
-                    />
-                    <FallOfWickets wickets={innings1.fallOfWickets} />
-                    <div className="mt-8">
-                      <BowlingCard
-                        bowlingPerformances={innings2.bowlingPerformances}
-                        players={innings2.team.players}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <BattingCard
-                      battingPerformances={innings2.battingPerformances}
-                      players={innings2.team.players}
-                      extras={innings2.team.extras}
-                    />
-                    <YetToBat players={innings2.team.yetToBat || []} />
-                    <FallOfWickets wickets={innings2.fallOfWickets} />
-                    <div className="mt-8">
-                      <BowlingCard
-                        bowlingPerformances={innings1.bowlingPerformances}
-                        players={innings1.team.players}
-                      />
-                    </div>
-                  </>
-                )}
-              </motion.div>
+            <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            key={activeInnings}
+          >
+            {activeInnings === 0 ? (
+              <>
+                <BattingCard
+                  battersAnalysis={data.batters_analysis}
+                  partnerships={data.partnerships}
+                  matchSummary={data.match_summary}
+                />
+                <div className="mt-8">
+                  <BowlingCard bowlersAnalysis={data.bowlers_analysis} />
+                </div>
+              </>
+            ) : (
+              <>
+                <BattingCard
+                  battersAnalysis={[]}
+                  partnerships={[]}
+                />
+                <div className="mt-8">
+                  <BowlingCard bowlersAnalysis={[]} />
+                </div>
+              </>
+            )}
+          </motion.div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -161,7 +257,7 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                 >
                   <div className="relative h-20 w-20 mr-6">
                     <Image
-                      src={`/rr.png`}
+                      src={`/mi.png`}
                       alt={innings1.team.shortName}
                       layout="fill"
                       className="object-contain filter drop-shadow-md"
@@ -172,9 +268,10 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                       {innings1.team.shortName}
                     </h2>
                     <p className="text-xl">
-                      {innings1.score}/{innings1.wickets}
+                      {data.match_summary.total_runs}/
+                      {data.match_summary.total_wickets}
                       <span className="text-gray-500 dark:text-gray-400 text-base ml-1">
-                        ({innings1.overs})
+                        ({data.match_summary.overs.toFixed(1)})
                       </span>
                     </p>
                   </div>
@@ -204,7 +301,7 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                   </div>
                   <div className="relative h-20 w-20 ml-6">
                     <Image
-                      src={`/pk.png`}
+                      src={`/srh.png`}
                       alt={innings2.team.shortName}
                       layout="fill"
                       className="object-contain filter drop-shadow-md"
@@ -220,7 +317,12 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                 transition={{ delay: 0.3, duration: 0.5 }}
               >
                 <p className="text-center font-medium text-white text-lg">
-                  {match.result}
+                  {/* {match.result} */}
+                  Current Run Rate:{" "}
+                  {data.match_summary.current_run_rate.toFixed(2)}
+                  <span className="ml-2 px-2 py-1 bg-blue-700 rounded-md text-sm">
+                    Momentum: {data.momentum.toFixed(1)}
+                  </span>
                 </p>
               </motion.div>
 
@@ -264,17 +366,19 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                             Top Scorer
                           </p>
                           <h4 className="font-bold text-green-700 dark:text-green-400">
-                            Sam Curran
+                            {topBatter.name}
                           </h4>
                           <div className="flex items-center">
                             <Badge
                               variant="outline"
                               className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 mr-2"
                             >
-                              63* (41)
+                              {topBatter.live_stats.runs} (
+                              {topBatter.live_stats.balls_faced})
                             </Badge>
                             <p className="text-xs text-gray-600 dark:text-gray-400">
-                              5 fours · 3 sixes
+                              SR: {topBatter.live_stats.strike_rate.toFixed(2)}{" "}
+                              · {topBatter.live_stats.boundaries} boundaries
                             </p>
                           </div>
                         </div>
@@ -308,17 +412,19 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                             Best Bowler
                           </p>
                           <h4 className="font-bold text-blue-700 dark:text-blue-400">
-                            Sam Curran
+                            {bestBowler.name}
                           </h4>
                           <div className="flex items-center">
                             <Badge
                               variant="outline"
                               className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 mr-2"
                             >
-                              2 wickets
+                              {bestBowler.live_stats.wickets} wicket
+                              {bestBowler.live_stats.wickets !== 1 ? "s" : ""}
                             </Badge>
                             <p className="text-xs text-gray-600 dark:text-gray-400">
-                              24 runs · 3 overs
+                              {bestBowler.live_stats.runs_conceded} runs ·{" "}
+                              {bestBowler.live_stats.overs.toFixed(1)} overs
                             </p>
                           </div>
                         </div>
@@ -327,6 +433,71 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                   </Card>
                 </motion.div>
 
+                <motion.div variants={fadeInUp}>
+                  <Card className="border border-blue-100 dark:border-blue-900/30 shadow-md hover:shadow-lg transition-shadow duration-300">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg font-semibold text-blue-700 dark:text-blue-300 flex items-center">
+                        <InfoIcon className="h-5 w-5 mr-2" />
+                        Live Analytics
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200">
+                        <TrendingUpIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
+                        <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
+                          Partnership
+                        </div>
+                        <div className="flex-1 text-sm">
+                          {data.partnerships[0].runs} Runs off{" "}
+                          {data.partnerships[0].balls} Balls (
+                          {(
+                            (data.partnerships[0].runs /
+                              data.partnerships[0].balls) *
+                            6
+                          ).toFixed(2)}{" "}
+                          RPO)
+                        </div>
+                      </div>
+
+                      <div className="flex items-center p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200">
+                        <ZapIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
+                        <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
+                          Next Ball
+                        </div>
+                        <div className="flex-1 text-sm">
+                          Boundary:{" "}
+                          {(data.probabilities.boundary * 100).toFixed(0)}% |
+                          Dot: {(data.probabilities.dot_ball * 100).toFixed(0)}%
+                          | Wicket:{" "}
+                          {(data.probabilities.wicket * 100).toFixed(0)}%
+                        </div>
+                      </div>
+
+                      <div className="flex items-center p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200">
+                        <TargetIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
+                        <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
+                          Innings Pace
+                        </div>
+                        <div className="flex-1 text-sm">
+                          Projected:{" "}
+                          {Math.round(data.match_summary.current_run_rate * 20)}{" "}
+                          (20 overs)
+                        </div>
+                      </div>
+
+                      <div className="flex items-center p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200">
+                        <AlertCircleIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
+                        <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
+                          Key Insight
+                        </div>
+                        <div className="flex-1 text-sm">
+                          Bowlers struggling with economy rates higher than
+                          historical averages
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
                 <motion.div variants={fadeInUp}>
                   <Card className="border border-blue-100 dark:border-blue-900/30 shadow-md hover:shadow-lg transition-shadow duration-300">
                     <CardHeader className="pb-2">
@@ -369,7 +540,7 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                         <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
                           Toss
                         </div>
-                        <div className="flex-1 text-sm">RR, elected to bat</div>
+                        <div className="flex-1 text-sm">MI, elected to bat</div>
                       </div>
                     </CardContent>
                   </Card>
@@ -379,9 +550,9 @@ export default function ScoreCard({ match }: ScoreCardProps) {
           </Card>
         </TabsContent>
 
-        <TabsContent value="RECOMMENDATIONS" className="mt-2">
+        <TabsContent value="ANALYSIS" className="mt-2">
           <Card className="border-none shadow-lg overflow-hidden">
-            <CricketAnalytics />
+            <CricketAnalytics data={data} />
             {/* <CardContent className="p-6">
               <motion.div 
                 className="text-center py-12"
@@ -414,10 +585,10 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                   transition={{ delay: 0.5, duration: 0.5 }}
                 >
                   <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">
-                    Recommendations not available
+                    Analysis not available
                   </h3>
                   <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    Live Recommendations will be available soon.
+                    Live Analysis will be available soon.
                   </p>
                 </motion.div>
               </motion.div>
