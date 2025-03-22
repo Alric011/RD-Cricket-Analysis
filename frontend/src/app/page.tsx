@@ -155,19 +155,19 @@ export default function Home() {
                     <TabsList className="bg-blue-100/50 dark:bg-blue-900/20">
                       <TabsTrigger 
                         value="live"
-                        className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
+                        className="cursor-pointer dark:text-white text-gray-800 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
                       >
                         Live Matches
                       </TabsTrigger>
                       <TabsTrigger 
                         value="upcoming"
-                        className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
+                        className="cursor-pointer dark:text-white text-gray-800 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
                       >
                         Upcoming
                       </TabsTrigger>
                       <TabsTrigger 
                         value="recent"
-                        className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
+                        className="cursor-pointer dark:text-white text-gray-800 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
                       >
                         Recent
                       </TabsTrigger>

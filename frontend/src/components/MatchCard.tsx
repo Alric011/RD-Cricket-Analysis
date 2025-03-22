@@ -20,7 +20,7 @@ export default function MatchCard({ match, onClick }: MatchCardProps) {
       transition={{ type: "spring", stiffness: 400, damping: 17 }}
     >
       <Card 
-        className="overflow-hidden cursor-pointer border-none shadow-lg"
+        className="overflow-hidden cursor-pointer border-none shadow-lg dark:text-white text-gray-800"
         onClick={onClick}
       >
         <CardHeader className="p-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white">

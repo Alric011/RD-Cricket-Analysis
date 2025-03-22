@@ -48,7 +48,7 @@ export default function ScoreCard({ match }: ScoreCardProps) {
 
   return (
     <motion.div 
-      className="w-full"
+      className="w-full dark:text-white text-gray-800"
       initial="hidden"
       animate="visible"
       variants={fadeInUp}
