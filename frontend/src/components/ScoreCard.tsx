@@ -448,8 +448,12 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                     2
                   ) || "0.00"}
                   <span className="ml-2 px-2 py-1 bg-blue-700 rounded-md text-sm">
-                    Momentum:{" "}
+                      Batting Momentum:{" "}
                     {(currentInningsData?.batting_momentum || 50).toFixed(1)}
+                  </span>
+                  <span className="ml-2 px-2 py-1 bg-blue-700 rounded-md text-sm">
+                        Bowling Momentum:{" "}
+                    {(currentInningsData?.bowling_momentum || 50).toFixed(1)}
                   </span>
                 </p>
               </motion.div>
