@@ -168,9 +168,9 @@ export default function MatchCard({ match, onClick }: MatchCardProps) {
               <div>
                 <h3 className="font-bold">{innings1.team.shortName}</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {data.match_summary.total_runs}/{data.match_summary.total_wickets}
+                  {data.innings_data[0].match_summary.total_runs}/{data.innings_data[0].match_summary.total_wickets}
                   <span className="text-xs text-gray-500 dark:text-gray-500 ml-1">
-                    ({data.match_summary.overs})
+                    ({Math.floor(data.innings_data[0].match_summary.overs)})
                   </span>
                 </p>
               </div>
@@ -190,9 +190,9 @@ export default function MatchCard({ match, onClick }: MatchCardProps) {
                   {innings2.team.shortName}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400 text-right">
-                  {innings2.score}/{innings2.wickets}
+                  {data.innings_data[1]?.match_summary.total_runs || 0}/{data.innings_data[1]?.match_summary.total_wickets || 0}
                   <span className="text-xs text-gray-500 dark:text-gray-500 ml-1">
-                    ({innings2.overs})
+                    ({Math.floor(data.innings_data[1]?.match_summary.overs) || 0})
                   </span>
                 </p>
               </div>

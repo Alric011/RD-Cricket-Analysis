@@ -10,6 +10,9 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Cell,
+  Pie,
+  PieChart,
 } from "recharts";
 import {
   Card,
@@ -79,101 +82,434 @@ const scaleIn = {
   },
 };
 
-const CricketAnalytics = ({ data }: any) => {
-  const [activeTab, setActiveTab] = useState<string>("summary");
+// Helper functions
+const getBadgeColorForStrikeRate = (sr: any) => {
+  if (sr === 0)
+    return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400";
+  if (sr > 180)
+    return "bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400";
+  if (sr > 150)
+    return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400";
+  if (sr > 120)
+    return "bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400";
+  if (sr > 100)
+    return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400";
+  return "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400";
+};
+
+const getBadgeColorForEconomy = (economy: any) => {
+  if (economy === 0)
+    return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400";
+  if (economy < 6)
+    return "bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400";
+  if (economy < 8)
+    return "bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400";
+  if (economy < 10)
+    return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400";
+  return "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400";
+};
+
+const getFormPercentage = (batter: any) => {
+  if (!batter.recent_performance) return 50;
+  // Scale from 0-2 to 0-100
+  return Math.min(100, Math.max(0, batter.recent_performance * 50));
+};
+
+const getFormColor = (batter: any) => {
+  if (!batter.recent_performance) return "bg-gray-400";
+  if (batter.recent_performance > 1.5) return "bg-green-500";
+  if (batter.recent_performance > 1.0) return "bg-blue-500";
+  if (batter.recent_performance > 0.5) return "bg-yellow-500";
+  return "bg-red-500";
+};
+
+const getMomentumDescription = (momentum: any) => {
+  const num = parseFloat(momentum);
+  if (num > 65) return "Strong momentum";
+  if (num > 55) return "Favorable momentum";
+  if (num > 45) return "Balanced momentum";
+  if (num > 35) return "Challenging position";
+  return "Struggling momentum";
+};
+
+const parseRecommendations = (rawRecommendations: any) => {
+  if (!rawRecommendations) return [];
+
+  // Split the string by newline and filter out empty lines and headers
+  const lines = rawRecommendations
+    .split("\n")
+    .filter(
+      (line: any) =>
+        line.trim() !== "" &&
+        !line.includes("Recommendations:") &&
+        !line.startsWith("Topic:") &&
+        !line.startsWith("Actions:") &&
+        !line.startsWith("Purpose:")
+    );
+
+  // Take only action items (lines that start with a number or have "Actions:" prefix)
+  const recommendations = [];
+  let currentRec = "";
+
+  for (const line of lines) {
+    if (/^\d+\./.test(line.trim())) {
+      if (currentRec) recommendations.push(currentRec);
+      currentRec = line.trim().replace(/^\d+\.\s*Topic:\s*/, "");
+    } else if (line.includes("Actions:")) {
+      currentRec += ": " + line.trim().replace("Actions:", "").trim();
+    }
+  }
+
+  if (currentRec) recommendations.push(currentRec);
+
+  // Return max 5 recommendations
+  return recommendations.slice(0, 5);
+};
+
+const AnimatedProgressBar = ({ value, colorClass }: any) => (
+  <motion.div
+    initial={{ width: 0 }}
+    animate={{ width: `${value}%` }}
+    transition={{ duration: 0.5, ease: "easeOut" }}
+    className={`h-2 rounded-full ${colorClass || "bg-blue-500"}`}
+  />
+);
+
+const StatCard = ({ label, value, description, color, icon }: any) => (
+  <div
+    className={`rounded-lg p-4 ${
+      color || "bg-gradient-to-br from-blue-500 to-blue-600"
+    } text-white shadow-md`}
+  >
+    <div className="flex justify-between">
+      <p className="text-xs font-medium text-blue-100">{label}</p>
+      {icon}
+    </div>
+    <p className="text-2xl font-bold mt-2">{value}</p>
+    {description && <p className="text-xs text-blue-100 mt-1">{description}</p>}
+  </div>
+);
+
+const BatterInsightCard = ({ batter, index }: any) => {
+  if (!batter.live_stats.balls_faced) return null;
 
   return (
     <motion.div
-      className="space-y-6 py-4 text-gray-800 dark:text-gray-200"
-      variants={staggerContainer}
-      initial="hidden"
-      animate="visible"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1, duration: 0.3 }}
     >
-      <Tabs
-        defaultValue="summary"
-        className="w-full"
-        onValueChange={setActiveTab}
-      >
-        <TabsList className="grid grid-cols-5 mb-6 bg-gray-100 dark:bg-gray-800 p-0 rounded-lg">
-          <TabsTrigger
-            value="summary"
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2"
-          >
-            Summary
-          </TabsTrigger>
-          <TabsTrigger
-            value="batting"
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2"
-          >
-            Batting
-          </TabsTrigger>
-          <TabsTrigger
-            value="bowling"
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2"
-          >
-            Bowling
-          </TabsTrigger>
-          <TabsTrigger
-            value="partnerships"
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2"
-          >
-            Partnerships
-          </TabsTrigger>
-          <TabsTrigger
-            value="predictions"
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2"
-          >
-            Predictions
-          </TabsTrigger>
-        </TabsList>
+      <Card className="border border-blue-100 dark:border-blue-900 overflow-hidden">
+        <CardHeader className="pb-2">
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-base font-medium">
+              {batter.name}
+            </CardTitle>
+            <Badge
+              className={cn(
+                getBadgeColorForStrikeRate(batter.live_stats.strike_rate)
+              )}
+            >
+              SR: {batter.live_stats.strike_rate.toFixed(1)}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Runs</p>
+              <p className="font-semibold">{batter.live_stats.runs}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Balls</p>
+              <p className="font-semibold">{batter.live_stats.balls_faced}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Boundaries
+              </p>
+              <p className="font-semibold">
+                {batter.live_stats.boundaries || 0}
+              </p>
+            </div>
+          </div>
 
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.3 }}
-        >
-          <TabsContent value="summary" className="mt-0">
-            <MatchSummary
-              summary={data.match_summary}
-              momentum={data.momentum}
-              recommendations={data.recommendations}
-            />
-          </TabsContent>
+          {batter.insight && (
+            <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-md text-sm">
+              {batter.insight}
+            </div>
+          )}
 
-          <TabsContent value="batting" className="mt-0">
-            <BattersAnalysis batters={data.batters_analysis} />
-          </TabsContent>
-
-          <TabsContent value="bowling" className="mt-0">
-            <BowlersAnalysis bowlers={data.bowlers_analysis} />
-          </TabsContent>
-
-          <TabsContent value="partnerships" className="mt-0">
-            <Partnerships partnerships={data.partnerships} />
-          </TabsContent>
-
-          <TabsContent value="predictions" className="mt-0">
-            <PredictionsTab
-              probabilities={data.probabilities}
-              momentum={data.momentum}
-            />
-          </TabsContent>
-        </motion.div>
-      </Tabs>
+          {batter.historical_stats && (
+            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                Career Stats
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Runs
+                  </p>
+                  <p className="font-semibold">
+                    {batter.historical_stats.runs}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Strike Rate
+                  </p>
+                  <p className="font-semibold">
+                    {batter.historical_stats.strike_rate}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </motion.div>
   );
 };
 
-// Sub-components
-const MatchSummary = ({ summary, momentum, recommendations }: any) => {
-  const runRateData = [
-    { name: "5", value: summary.run_rate_by_over?.["5"] || 5.2 },
-    { name: "10", value: summary.run_rate_by_over?.["10"] || 7.8 },
-    { name: "15", value: summary.run_rate_by_over?.["15"] || 8.4 },
-    { name: "Current", value: summary.current_run_rate },
+const BowlerInsightCard = ({ bowler, index }: any) => {
+  if (!bowler.live_stats.overs) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1, duration: 0.3 }}
+    >
+      <Card className="border border-blue-100 dark:border-blue-900 overflow-hidden">
+        <CardHeader className="pb-2">
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-base font-medium">
+              {bowler.name}
+            </CardTitle>
+            <Badge
+              className={cn(getBadgeColorForEconomy(bowler.live_stats.economy))}
+            >
+              Eco: {bowler.live_stats.economy.toFixed(2)}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Overs</p>
+              <p className="font-semibold">
+                {bowler.live_stats.overs.toFixed(1)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Runs</p>
+              <p className="font-semibold">{bowler.live_stats.runs_conceded}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Wickets
+              </p>
+              <p className="font-semibold">{bowler.live_stats.wickets}</p>
+            </div>
+          </div>
+
+          {bowler.insight && (
+            <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-md text-sm">
+              {bowler.insight}
+            </div>
+          )}
+
+          {bowler.historical_stats && bowler.historical_stats.economy > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                Career Stats
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Economy
+                  </p>
+                  <p className="font-semibold">
+                    {bowler.historical_stats.economy.toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Wickets
+                  </p>
+                  <p className="font-semibold">
+                    {bowler.historical_stats.wickets}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+};
+
+const PredictionsTab = ({ batting_momentum, bowling_momentum }: any) => {
+  // Create data for the pie chart using the momentum values
+  const momentumData = [
+    { name: "Batting", value: batting_momentum, fill: "#3b82f6" },
+    { name: "Bowling", value: bowling_momentum, fill: "#ef4444" },
   ];
+
+  return (
+    <motion.div>
+      <Card className="overflow-hidden border-none shadow-lg">
+        <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800">
+          <CardTitle className="text-lg font-semibold text-blue-700 dark:text-blue-400">
+            Momentum Analysis
+          </CardTitle>
+          <CardDescription>
+            Batting & Bowling Momentum Analysis and Outcome Predictions
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+            <motion.div
+              className="w-full md:w-1/2 flex flex-col items-center"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              <h3 className="text-lg font-medium mb-3 text-center">
+                Momentum Distribution
+              </h3>
+              <div className="w-60 h-60">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={momentumData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      outerRadius={70}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, percent }) =>
+                        `${name}: ${(percent * 100).toFixed(1)}%`
+                      }
+                    >
+                      {momentumData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: any) => `${value.toFixed(1)}%`}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-between w-full mt-2">
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-blue-600 rounded-full mr-1"></div>
+                  <span className="text-xs font-medium">Batting</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-red-600 rounded-full mr-1"></div>
+                  <span className="text-xs font-medium">Bowling</span>
+                </div>
+              </div>
+            </motion.div>
+
+            <div className="w-full md:w-1/2 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg mt-6 md:mt-0">
+              <h3 className="text-lg font-medium mb-3 text-center">
+                Outcome Predictions
+              </h3>
+              <motion.div
+                className="space-y-3"
+                variants={staggerContainer}
+                initial="hidden"
+                animate="visible"
+              >
+                <motion.div
+                  variants={fadeInUp}
+                  className="flex justify-between"
+                >
+                  <span className="text-sm">Batting Momentum</span>
+                  <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
+                    {batting_momentum.toFixed(1)}%
+                  </Badge>
+                </motion.div>
+                <motion.div
+                  variants={fadeInUp}
+                  className="flex justify-between"
+                >
+                  <span className="text-sm">Bowling Momentum</span>
+                  <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
+                    {bowling_momentum.toFixed(1)}%
+                  </Badge>
+                </motion.div>
+                <motion.div
+                  variants={fadeInUp}
+                  className="flex justify-between"
+                >
+                  <span className="text-sm">Current Run Rate</span>
+                  <span className="text-sm font-medium">12.48</span>
+                </motion.div>
+                <motion.div
+                  variants={fadeInUp}
+                  className="flex justify-between"
+                >
+                  <span className="text-sm">Projected Score</span>
+                  <span className="text-sm font-medium">~200-220</span>
+                </motion.div>
+              </motion.div>
+            </div>
+          </div>
+
+          <motion.div
+            className="mt-8 p-4 border border-yellow-200 bg-yellow-50 dark:bg-yellow-900/10 dark:border-yellow-800 rounded-lg"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.3 }}
+          >
+            <div className="flex items-start">
+              <AlertTriangleIcon className="h-5 w-5 text-yellow-500 mr-2 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                  Analysis Disclaimer
+                </p>
+                <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                  This momentum analysis is based on live match data, historical
+                  performance, and statistical models. Metrics may change as the
+                  match progresses.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+};
+
+const MatchSummary = ({
+  summary,
+  batting_momentum,
+  bowling_momentum,
+  recommendations,
+}: any) => {
+  // Create run rate data from over metrics
+  const runRateData =
+    summary && summary.run_rate_by_over
+      ? Object.keys(summary.run_rate_by_over).map((over) => ({
+          name: over,
+          value: summary.run_rate_by_over[over],
+        }))
+      : [];
+
+  // If no run_rate_by_over data, use current run rate
+  if (runRateData.length === 0 && summary) {
+    runRateData.push({
+      name: "Current",
+      value: summary.current_run_rate,
+    });
+  }
 
   return (
     <motion.div
@@ -185,15 +521,25 @@ const MatchSummary = ({ summary, momentum, recommendations }: any) => {
       <motion.div>
         <Card className="overflow-hidden border-none shadow-lg">
           <CardContent className="p-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              <motion.div
-                className="col-span-2 md:col-span-1"
-                variants={scaleIn}
-              >
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <motion.div variants={scaleIn}>
                 <StatCard
-                  label="Match Momentum"
-                  value={momentum ? `${momentum.toFixed(1)}%` : "N/A"}
-                  description={getMomentumDescription(momentum.toFixed(1))}
+                  label="Batting Momentum"
+                  value={
+                    batting_momentum ? `${batting_momentum.toFixed(1)}%` : "N/A"
+                  }
+                  description={getMomentumDescription(batting_momentum || 0)}
+                  color="bg-gradient-to-br from-blue-500 to-blue-600"
+                  icon={<TrendingUpIcon className="h-5 w-5 text-blue-100" />}
+                />
+              </motion.div>
+              <motion.div variants={scaleIn}>
+                <StatCard
+                  label="Bowling Momentum"
+                  value={
+                    bowling_momentum ? `${bowling_momentum.toFixed(1)}%` : "N/A"
+                  }
+                  description={getMomentumDescription(bowling_momentum || 0)}
                   color="bg-gradient-to-br from-blue-500 to-blue-600"
                   icon={<TrendingUpIcon className="h-5 w-5 text-blue-100" />}
                 />
@@ -201,29 +547,32 @@ const MatchSummary = ({ summary, momentum, recommendations }: any) => {
               <motion.div variants={scaleIn}>
                 <StatCard
                   label="Total Runs"
-                  value={summary.total_runs}
+                  value={summary?.total_runs || 0}
+                  description={"Runs scored"}
                   icon={<BarChart3Icon className="h-5 w-5 text-blue-100" />}
                 />
               </motion.div>
               <motion.div variants={scaleIn}>
                 <StatCard
                   label="Wickets"
-                  value={summary.total_wickets}
+                  value={summary?.total_wickets || 0}
+                  description={"Wickets taken"}
                   icon={<ChevronDownIcon className="h-5 w-5 text-blue-100" />}
                 />
               </motion.div>
               <motion.div variants={scaleIn}>
                 <StatCard
                   label="Run Rate"
-                  value={summary.current_run_rate.toFixed(2)}
+                  value={(summary?.current_run_rate || 0).toFixed(2)}
+                  description={"RPO (Runs Per Over)"}
                   icon={<LineChartIcon className="h-5 w-5 text-blue-100" />}
                 />
               </motion.div>
               <motion.div variants={scaleIn}>
                 <StatCard
                   label="Overs"
-                  value={summary.overs}
-                  description={`${summary.total_balls} balls`}
+                  value={Math.floor(summary?.overs) || 0}
+                  description={"Total overs bowled"}
                   icon={<ChevronUpIcon className="h-5 w-5 text-blue-100" />}
                 />
               </motion.div>
@@ -290,21 +639,22 @@ const MatchSummary = ({ summary, momentum, recommendations }: any) => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {recommendations.map((rec: string, i: number) => (
-                      <motion.div
-                        key={i}
-                        className="flex items-start p-3 rounded-lg bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800"
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.1, duration: 0.3 }}
-                        whileHover={{ x: 3 }}
-                      >
-                        <ArrowRightIcon className="h-5 w-5 text-blue-500 dark:text-blue-400 mt-0.5 mr-2 flex-shrink-0" />
-                        <p className="text-sm text-gray-700 dark:text-gray-300">
-                          {rec}
-                        </p>
-                      </motion.div>
-                    ))}
+                    {recommendations &&
+                      recommendations.map((rec: any, i: any) => (
+                        <motion.div
+                          key={i}
+                          className="flex items-start p-3 rounded-lg bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800"
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.1, duration: 0.3 }}
+                          whileHover={{ x: 3 }}
+                        >
+                          <ArrowRightIcon className="h-5 w-5 text-blue-500 dark:text-blue-400 mt-0.5 mr-2 flex-shrink-0" />
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            {rec}
+                          </p>
+                        </motion.div>
+                      ))}
                   </div>
                 </CardContent>
               </Card>
@@ -316,372 +666,12 @@ const MatchSummary = ({ summary, momentum, recommendations }: any) => {
   );
 };
 
+// BattersAnalysis Component
 const BattersAnalysis = ({ batters }: any) => {
-  return (
-    <motion.div>
-      <Card className="overflow-hidden border-none shadow-lg">
-        <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800">
-          <CardTitle className="text-lg font-semibold text-blue-700 dark:text-blue-400">
-            Batters Performance
-          </CardTitle>
-          <CardDescription>
-            Detailed batting statistics and insights
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-blue-50 dark:bg-blue-900/20">
-                  <TableHead className="font-medium">Batter</TableHead>
-                  <TableHead className="text-right font-medium">Runs</TableHead>
-                  <TableHead className="text-right font-medium">
-                    Balls
-                  </TableHead>
-                  <TableHead className="text-right font-medium">SR</TableHead>
-                  <TableHead className="text-right font-medium">
-                    Boundaries
-                  </TableHead>
-                  <TableHead className="font-medium">Form</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {batters.map((batter: any, i: number) => (
-                  <motion.tr
-                    key={i}
-                    custom={i}
-                    className="hover:bg-blue-100 dark:hover:bg-blue-900/10 cursor-pointer"
-                  >
-                    <TableCell className="font-medium">
-                      <div className="flex flex-col">
-                        <span>{batter.name}</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {batter.current_status ||
-                            (batter.live_stats.balls_faced > 0
-                              ? "Batting"
-                              : "Yet to bat")}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className="font-semibold">
-                        {batter.live_stats.runs}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {batter.live_stats.balls_faced}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "font-medium",
-                          getBadgeColorForStrikeRate(
-                            batter.live_stats.strike_rate
-                          )
-                        )}
-                      >
-                        {batter.live_stats.strike_rate.toFixed(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-1">
-                        <Badge
-                          variant="outline"
-                          className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800"
-                        >
-                          {batter.live_stats.boundaries || "0"}
-                        </Badge>
-                        {/* <Badge
-                          variant="outline"
-                          className="bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800"
-                        >
-                          {batter.live_stats.sixes || "0"}
-                        </Badge> */}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="w-24">
-                        <AnimatedProgressBar
-                          value={getFormPercentage(batter)}
-                          colorClass={getFormColor(batter)}
-                        />
-                      </div>
-                    </TableCell>
-                  </motion.tr>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+  // Filter out batters with no balls faced (likely not yet batted)
+  const activeBatters =
+    batters?.filter((batter: any) => batter.live_stats?.balls_faced > 0) || [];
 
-          <motion.div
-            className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6"
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-          >
-            {batters.map((batter: any, i: number) => (
-              <motion.div key={i}>
-                <BatterInsightCard batter={batter} index={i} />
-              </motion.div>
-            ))}
-          </motion.div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
-};
-
-const BowlersAnalysis = ({ bowlers }: any) => {
-  return (
-    <motion.div>
-      <Card className="overflow-hidden border-none shadow-lg">
-        <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800">
-          <CardTitle className="text-lg font-semibold text-blue-700 dark:text-blue-400">
-            Bowlers Performance
-          </CardTitle>
-          <CardDescription>
-            Detailed bowling statistics and insights
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-blue-50 dark:bg-blue-900/20">
-                  <TableHead className="font-medium">Bowler</TableHead>
-                  <TableHead className="text-right font-medium">
-                    Overs
-                  </TableHead>
-                  <TableHead className="text-right font-medium">
-                    Maiden
-                  </TableHead>
-                  <TableHead className="text-right font-medium">Runs</TableHead>
-                  <TableHead className="text-right font-medium">
-                    Wickets
-                  </TableHead>
-                  <TableHead className="text-right font-medium">
-                    Economy
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {bowlers.map((bowler: any, i: number) => (
-                  <motion.tr
-                    key={i}
-                    custom={i}
-                    className="hover:bg-blue-100 dark:hover:bg-blue-900/10 cursor-pointer"
-                  >
-                    <TableCell className="font-medium">
-                      <div className="flex flex-col">
-                        <span>{bowler.name}</span>
-                        {bowler.current_status && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {bowler.current_status}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {bowler.live_stats.overs.toFixed(1)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {bowler.live_stats.maidens || 0}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {bowler.live_stats.runs_conceded}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge className="bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 hover:bg-green-200">
-                        {bowler.live_stats.wickets}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "font-medium",
-                          getBadgeColorForEconomy(bowler.live_stats.economy)
-                        )}
-                      >
-                        {bowler.live_stats.economy.toFixed(2)}
-                      </Badge>
-                    </TableCell>
-                  </motion.tr>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          <motion.div
-            className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6"
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-          >
-            {bowlers.map((bowler: any, i: number) => (
-              <motion.div key={i}>
-                <BowlerInsightCard bowler={bowler} index={i} />
-              </motion.div>
-            ))}
-          </motion.div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
-};
-
-const Partnerships = ({ partnerships }: any) => {
-  // Transform data for the chart
-  const chartData = partnerships.map((p: any) => ({
-    name: p.batsmen.join(" & ").substring(0, 20),
-    runs: p.runs,
-    runRate: parseFloat(p.run_rate.toFixed(2)),
-  }));
-
-  return (
-    <motion.div>
-      <Card className="overflow-hidden border-none shadow-lg">
-        <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800">
-          <CardTitle className="text-lg font-semibold text-blue-700 dark:text-blue-400">
-            Partnerships Analysis
-          </CardTitle>
-          <CardDescription>
-            Detailed breakdown of batting partnerships
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          {partnerships.length === 0 ? (
-            <motion.div
-              className="text-center py-12 text-gray-500"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              No partnerships recorded for this match
-            </motion.div>
-          ) : (
-            <>
-              <motion.div
-                className="mb-8 h-72"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                    <XAxis dataKey="name" />
-                    <YAxis yAxisId="left" orientation="left" stroke="#3b82f6" />
-                    <YAxis
-                      yAxisId="right"
-                      orientation="right"
-                      stroke="#10b981"
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        color: "#000000",
-                        backgroundColor: "rgba(255, 255, 255, 0.95)",
-                        borderRadius: "8px",
-                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-                        border: "1px solid #e0e0e0",
-                      }}
-                    />
-                    <Bar
-                      yAxisId="left"
-                      dataKey="runs"
-                      fill="#3b82f6"
-                      radius={[4, 4, 0, 0]}
-                      name="Runs"
-                    />
-                    <Bar
-                      yAxisId="right"
-                      dataKey="runRate"
-                      fill="#10b981"
-                      radius={[4, 4, 0, 0]}
-                      name="Run Rate"
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </motion.div>
-
-              <Accordion type="single" collapsible className="w-full">
-                {partnerships.map((p: any, i: number) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05, duration: 0.3 }}
-                  >
-                    <AccordionItem
-                      value={`item-${i}`}
-                      className="border border-blue-100 dark:border-blue-900 rounded-lg mb-3 overflow-hidden"
-                    >
-                      <AccordionTrigger className="hover:bg-blue-50 dark:hover:bg-blue-900/10 px-4">
-                        <div className="flex flex-1 items-center justify-between">
-                          <div className="font-medium">
-                            {p.batsmen.join(" & ")}
-                          </div>
-                          <div className="flex space-x-3 mr-4">
-                            <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
-                              {p.runs} runs
-                            </Badge>
-                            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400">
-                              {((p.runs / p.balls) * 6).toFixed(2)} RPO
-                            </Badge>
-                          </div>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4 pt-2 bg-blue-50/50 dark:bg-blue-900/5">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Runs
-                            </p>
-                            <p className="font-medium">{p.runs}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Balls Faced
-                            </p>
-                            <p className="font-medium">{p.balls}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Run Rate (Per Ball)
-                            </p>
-                            <p className="font-medium">
-                              {p.run_rate.toFixed(2)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              RPO (Run rate Per Over)
-                            </p>
-                            <p className="font-medium">
-                              {((p.runs / p.balls) * 6).toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-                        {p.insight && (
-                          <div className="mt-4 bg-white dark:bg-gray-800 p-3 rounded-md border border-blue-100 dark:border-blue-900">
-                            <p className="text-sm">{p.insight}</p>
-                          </div>
-                        )}
-                      </AccordionContent>
-                    </AccordionItem>
-                  </motion.div>
-                ))}
-              </Accordion>
-            </>
-          )}
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
-};
-
-const PredictionsTab = ({ probabilities, momentum }: any) => {
   return (
     <motion.div
       className="space-y-6"
@@ -689,571 +679,754 @@ const PredictionsTab = ({ probabilities, momentum }: any) => {
       initial="hidden"
       animate="visible"
     >
-      <motion.div>
-        <Card className="overflow-hidden border-none shadow-lg">
-          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800">
-            <CardTitle className="text-lg font-semibold text-blue-700 dark:text-blue-400">
-              Match Outcome Predictions
-            </CardTitle>
-            <CardDescription>
-              AI-driven predictions based on current match situation
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <motion.div
-                className="col-span-1 md:col-span-2"
-                variants={scaleIn}
-              >
-                <Card className="border border-blue-100 dark:border-blue-900">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-medium text-blue-700 dark:text-blue-400 flex items-center">
-                      <TrendingUpIcon className="h-4 w-4 mr-2" />
-                      Team Momentum
-                    </CardTitle>
-                    <CardDescription>
-                      Current momentum trend based on last 5 overs
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={getMomentumChartData(momentum)}>
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#e0e0e0"
-                          />
-                          <XAxis dataKey="name" />
-                          <YAxis domain={[0, 100]} />
-                          <Tooltip
-                            contentStyle={{
-                              color: "#000000",
-                              backgroundColor: "rgba(255, 255, 255, 0.95)",
-                              borderRadius: "8px",
-                              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-                              border: "1px solid #e0e0e0",
-                            }}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="value"
-                            stroke="#3b82f6"
-                            strokeWidth={3}
-                            activeDot={{
-                              r: 8,
-                              fill: "#2563eb",
-                              stroke: "#fff",
-                              strokeWidth: 2,
-                            }}
-                            dot={{
-                              r: 6,
-                              fill: "#3b82f6",
-                              stroke: "#fff",
-                              strokeWidth: 2,
-                            }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
+      <Card className="overflow-hidden border-none shadow-lg">
+        <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800">
+          <CardTitle className="text-lg font-semibold text-blue-700 dark:text-blue-400">
+            Batting Analysis
+          </CardTitle>
+          <CardDescription>
+            Performance insights for each batter
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          {/* Active Batters Section */}
+          <div className="mb-6">
+            <h3 className="text-lg font-medium mb-4 flex items-center">
+              <TrendingUpIcon className="h-5 w-5 mr-2 text-blue-500" />
+              Current Batters
+            </h3>
 
-              {/* <motion.div>
-                <Card className="border border-blue-100 dark:border-blue-900 h-full">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-medium text-blue-700 dark:text-blue-400">
-                      Win Probability
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex flex-col items-center justify-center py-4">
-                    <motion.div
-                      className="relative w-48 h-48"
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 260,
-                        damping: 20,
-                        delay: 0.2,
-                      }}
-                    >
-                      <motion.div
-                        className="absolute inset-0 flex items-center justify-center"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.5 }}
-                      >
-                        <span className="text-4xl font-bold text-blue-600 dark:text-blue-400">
-                          {(probabilities.win_probability * 100).toFixed(0)}%
-                        </span>
-                      </motion.div>
-                      <svg className="w-full h-full" viewBox="0 0 100 100">
-                        <motion.circle
-                          cx="50"
-                          cy="50"
-                          r="45"
-                          fill="none"
-                          stroke="#e0e0e0"
-                          strokeWidth="10"
-                        />
-                        <motion.circle
-                          cx="50"
-                          cy="50"
-                          r="45"
-                          fill="none"
-                          stroke="#3b82f6"
-                          strokeWidth="10"
-                          strokeDasharray={`${2 * Math.PI * 45}`}
-                          strokeDashoffset={
-                            2 *
-                            Math.PI *
-                            45 *
-                            (1 - probabilities.win_probability)
-                          }
-                          strokeLinecap="round"
-                          initial={{ strokeDashoffset: 2 * Math.PI * 45 }}
-                          animate={{
-                            strokeDashoffset:
-                              2 *
-                              Math.PI *
-                              45 *
-                              (1 - probabilities.win_probability),
-                          }}
-                          transition={{ duration: 1.5, ease: "easeInOut" }}
-                        />
-                      </svg>
-                    </motion.div>
-                    <p className="mt-4 text-gray-600 dark:text-gray-400 text-center">
-                      Current win prediction based on historical patterns,
-                      current score, and team form
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div> */}
-
-              <motion.div className="col-span-1 md:col-span-2">
-                <Card className="border border-blue-100 dark:border-blue-900 h-full">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-medium text-blue-700 dark:text-blue-400">
-                      Event Probabilities
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {Object.entries(probabilities)
-                        .filter(([key]) => key !== "win_probability")
-                        .map(([key, value]: any, i) => (
-                          <motion.div
-                            key={key}
-                            className="space-y-1.5"
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.1 }}
-                          >
-                            <div className="flex justify-between items-center">
-                              <div className="text-sm font-medium capitalize text-gray-700 dark:text-gray-300">
-                                {key.replace(/_/g, " ")}
-                              </div>
-                              <div className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                                {(value * 100).toFixed(0)}%
-                              </div>
-                            </div>
-                            <AnimatedProgressBar
-                              value={value * 100}
-                              colorClass="bg-blue-600 dark:bg-blue-500"
-                            />
-                          </motion.div>
-                        ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {activeBatters.length > 0 ? (
+                activeBatters
+                  .filter((batter: any) => batter.is_batting)
+                  .map((batter: any, index: any) => (
+                    <BatterInsightCard
+                      key={batter.name}
+                      batter={batter}
+                      index={index}
+                    />
+                  ))
+              ) : (
+                <p className="text-gray-500 col-span-2">
+                  No active batters at the moment.
+                </p>
+              )}
             </div>
+          </div>
 
-            <motion.div className="mt-6">
-              <Card className="border border-blue-100 dark:border-blue-900">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-medium text-blue-700 dark:text-blue-400 flex items-center">
-                    <CheckCircleIcon className="h-4 w-4 mr-2" />
-                    Key Prediction Insights
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {getPredictionInsights(probabilities).map((insight, i) => (
-                      <motion.div
-                        key={i}
-                        className="flex items-start p-3 rounded-lg bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800"
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.1, duration: 0.3 }}
-                        whileHover={{ x: 3 }}
-                      >
-                        <ArrowRightIcon className="h-5 w-5 text-blue-500 dark:text-blue-400 mt-0.5 mr-2 flex-shrink-0" />
-                        <p className="text-sm text-gray-700 dark:text-gray-300">
-                          {insight}
-                        </p>
-                      </motion.div>
-                    ))}
+          {/* All Batters Section */}
+          <div>
+            <h3 className="text-lg font-medium mb-4">
+              All Batters Performance
+            </h3>
+
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Batter</TableHead>
+                  <TableHead className="text-right">Runs</TableHead>
+                  <TableHead className="text-right">Balls</TableHead>
+                  <TableHead className="text-right">SR</TableHead>
+                  <TableHead className="text-right">Boundaries</TableHead>
+                  <TableHead className="text-right">Form</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {batters && batters.length > 0 ? (
+                  batters.map((batter: any) => (
+                    <TableRow key={batter.name}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center">
+                          {batter.is_batting && (
+                            <Badge
+                              variant="outline"
+                              className="mr-2 bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
+                            >
+                              At Crease
+                            </Badge>
+                          )}
+                          {batter.name}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {batter.live_stats?.runs || 0}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {batter.live_stats?.balls_faced || 0}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge
+                          className={getBadgeColorForStrikeRate(
+                            batter.live_stats?.strike_rate || 0
+                          )}
+                        >
+                          {(batter.live_stats?.strike_rate || 0).toFixed(1)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {batter.live_stats?.boundaries || 0}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                          <AnimatedProgressBar
+                            value={getFormPercentage(batter)}
+                            colorClass={getFormColor(batter)}
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      className="text-center py-4 text-gray-500"
+                    >
+                      No batting data available.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+
+            {/* Batting Insights Accordion */}
+            <Accordion type="single" collapsible className="mt-6">
+              <AccordionItem value="insights">
+                <AccordionTrigger className="text-blue-600 dark:text-blue-400">
+                  See Detailed Batting Insights
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                    {batters && batters.length > 0 ? (
+                      batters
+                        .filter((batter: any) => batter.insight)
+                        .map((batter: any, index: any) => (
+                          <div
+                            key={batter.name}
+                            className="p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700"
+                          >
+                            <p className="font-medium text-blue-700 dark:text-blue-400 mb-1">
+                              {batter.name}
+                            </p>
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                              {batter.insight}
+                            </p>
+                          </div>
+                        ))
+                    ) : (
+                      <p className="text-gray-500">No insights available.</p>
+                    )}
                   </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </CardContent>
-        </Card>
-      </motion.div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+        </CardContent>
+      </Card>
     </motion.div>
   );
 };
 
-// Reusable components
+// BowlersAnalysis Component
+const BowlersAnalysis = ({ bowlers }: any) => {
+  // Filter out bowlers with no overs bowled
+  const activeBowlers =
+    bowlers?.filter((bowler: any) => bowler.live_stats?.overs > 0) || [];
 
-const StatCard = ({
-  label,
-  value,
-  description,
-  color = "bg-blue-600",
-  icon,
-}: any) => {
   return (
-    <Card className={`border-none overflow-hidden h-full`}>
-      <CardContent className="p-0">
-        <div className="relative">
-          <div className={`${color} h-2 w-full`} />
-          <div className="p-5">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-                  {label}
+    <motion.div
+      className="space-y-6"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="visible"
+    >
+      <Card className="overflow-hidden border-none shadow-lg">
+        <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800">
+          <CardTitle className="text-lg font-semibold text-blue-700 dark:text-blue-400">
+            Bowling Analysis
+          </CardTitle>
+          <CardDescription>
+            Performance insights for each bowler
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          {/* Current Bowler Section */}
+          <div className="mb-6">
+            <h3 className="text-lg font-medium mb-4 flex items-center">
+              <TrendingUpIcon className="h-5 w-5 mr-2 text-blue-500" />
+              Current Bowler
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {activeBowlers.length > 0 ? (
+                activeBowlers
+                  .filter((bowler: any) => bowler.is_bowling)
+                  .map((bowler: any, index: any) => (
+                    <BowlerInsightCard
+                      key={bowler.name}
+                      bowler={bowler}
+                      index={index}
+                    />
+                  ))
+              ) : (
+                <p className="text-gray-500 col-span-2">
+                  No active bowler at the moment.
                 </p>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-50">
-                  {value}
-                </h3>
-                {description && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {description}
-                  </p>
-                )}
-              </div>
-              {icon && (
-                <div className={`${color} p-2 rounded-full`}>{icon}</div>
               )}
             </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+
+          {/* Economy Rate Chart */}
+          <div className="mb-6">
+            <h3 className="text-lg font-medium mb-4">
+              Economy Rate Comparison
+            </h3>
+
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={activeBowlers.map((bowler: any) => ({
+                    name: bowler.name,
+                    economy: bowler.live_stats.economy,
+                    wickets: bowler.live_stats.wickets,
+                  }))}
+                  margin={{ top: 10, right: 10, left: 10, bottom: 40 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                  <XAxis
+                    dataKey="name"
+                    angle={-45}
+                    textAnchor="end"
+                    height={70}
+                  />
+                  <YAxis
+                    label={{
+                      value: "Economy Rate",
+                      angle: -90,
+                      position: "insideLeft",
+                    }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      color: "#000000",
+                      backgroundColor: "rgba(255, 255, 255, 0.95)",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                      border: "1px solid #e0e0e0",
+                    }}
+                    formatter={(value: any, name, props) => {
+                      if (name === "economy")
+                        return [`${value.toFixed(2)}`, "Economy Rate"];
+                      return [value, name];
+                    }}
+                  />
+                  <Bar dataKey="economy" fill="#3b82f6" radius={[4, 4, 0, 0]}>
+                    {activeBowlers.map((entry: any, index: any) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={
+                          entry.live_stats.economy < 7
+                            ? "#22c55e"
+                            : entry.live_stats.economy < 9
+                            ? "#3b82f6"
+                            : "#ef4444"
+                        }
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* All Bowlers Table */}
+          <div>
+            <h3 className="text-lg font-medium mb-4">
+              All Bowlers Performance
+            </h3>
+
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Bowler</TableHead>
+                  <TableHead className="text-right">Overs</TableHead>
+                  <TableHead className="text-right">Runs</TableHead>
+                  <TableHead className="text-right">Wickets</TableHead>
+                  <TableHead className="text-right">Economy</TableHead>
+                  <TableHead className="text-right">Dot Balls</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {bowlers && bowlers.length > 0 ? (
+                  bowlers.map((bowler: any) => (
+                    <TableRow key={bowler.name}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center">
+                          {bowler.is_bowling && (
+                            <Badge
+                              variant="outline"
+                              className="mr-2 bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
+                            >
+                              Bowling
+                            </Badge>
+                          )}
+                          {bowler.name}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {bowler.live_stats?.overs?.toFixed(1) || 0}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {bowler.live_stats?.runs_conceded || 0}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {bowler.live_stats?.wickets || 0}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge
+                          className={getBadgeColorForEconomy(
+                            bowler.live_stats?.economy || 0
+                          )}
+                        >
+                          {(bowler.live_stats?.economy || 0).toFixed(2)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {bowler.live_stats?.dot_balls || 0}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      className="text-center py-4 text-gray-500"
+                    >
+                      No bowling data available.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+
+            {/* Bowling Insights Accordion */}
+            <Accordion type="single" collapsible className="mt-6">
+              <AccordionItem value="insights">
+                <AccordionTrigger className="text-blue-600 dark:text-blue-400">
+                  See Detailed Bowling Insights
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                    {bowlers && bowlers.length > 0 ? (
+                      bowlers
+                        .filter((bowler: any) => bowler.insight)
+                        .map((bowler: any, index: any) => (
+                          <div
+                            key={bowler.name}
+                            className="p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700"
+                          >
+                            <p className="font-medium text-blue-700 dark:text-blue-400 mb-1">
+                              {bowler.name}
+                            </p>
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                              {bowler.insight}
+                            </p>
+                          </div>
+                        ))
+                    ) : (
+                      <p className="text-gray-500">No insights available.</p>
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 };
 
-const BatterInsightCard = ({ batter, index }: any) => {
+// Partnerships Component
+const Partnerships = ({ partnerships }: any) => {
+  // Format partnerships data for visualization
+  const partnershipData =
+    partnerships?.map((p: any) => ({
+      name: `${p.batsmen[0]} & ${p.batsmen[1]}`,
+      runs: p.runs,
+      balls: p.balls,
+      run_rate: p.run_rate,
+    })) || [];
+
   return (
-    <Card className="border border-blue-100 dark:border-blue-800 overflow-hidden h-full">
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-base font-medium text-blue-700 dark:text-blue-400">
-            {batter.name}
+    <motion.div
+      className="space-y-6"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="visible"
+    >
+      <Card className="overflow-hidden border-none shadow-lg">
+        <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800">
+          <CardTitle className="text-lg font-semibold text-blue-700 dark:text-blue-400">
+            Partnership Analysis
           </CardTitle>
-          <Badge
-            variant={getBadgeVariantForStrikeRate(
-              batter.live_stats.strike_rate
-            )}
+          <CardDescription>Insights on batting partnerships</CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          {/* Partnerships Chart */}
+          <div className="mb-6">
+            <h3 className="text-lg font-medium mb-4">
+              Partnership Contributions
+            </h3>
+
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={partnershipData}
+                  margin={{ top: 10, right: 10, left: 10, bottom: 40 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                  <XAxis
+                    dataKey="name"
+                    angle={-45}
+                    textAnchor="end"
+                    height={70}
+                  />
+                  <YAxis
+                    label={{
+                      value: "Runs",
+                      angle: -90,
+                      position: "insideLeft",
+                    }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      color: "#000000",
+                      backgroundColor: "rgba(255, 255, 255, 0.95)",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                      border: "1px solid #e0e0e0",
+                    }}
+                    formatter={(value: any, name, props) => {
+                      if (name === "strike_rate")
+                        return [`${value.toFixed(2)}`, "Strike Rate"];
+                      return [value, name];
+                    }}
+                  />
+                  <Bar dataKey="runs" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Partnerships Table */}
+          <div>
+            <h3 className="text-lg font-medium mb-4">Partnership Details</h3>
+
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Partnership</TableHead>
+                  <TableHead className="text-right">Runs</TableHead>
+                  <TableHead className="text-right">Balls</TableHead>
+                  <TableHead className="text-right">Run Rate</TableHead>
+                  {/* <TableHead className="text-right">Wicket</TableHead> */}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {partnerships && partnerships.length > 0 ? (
+                  partnerships.map((partnership: any, index: any) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">
+                        {partnership.batsmen[0]} & {partnership.batsmen[1]}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {partnership.runs}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {partnership.balls}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge
+                          className={getBadgeColorForStrikeRate(
+                            partnership.run_rate || 0
+                          )}
+                        >
+                          {(partnership.run_rate || 0).toFixed(1)}
+                        </Badge>
+                      </TableCell>
+                      {/* <TableCell className="text-right">
+                        {partnership.wicket ? (
+                          <Badge variant="outline" className="bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400">
+                            {partnership.wicket}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400">
+                            Not Out
+                          </Badge>
+                        )}
+                      </TableCell> */}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="text-center py-4 text-gray-500"
+                    >
+                      No partnership data available.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+
+            {/* Partnership Insights */}
+            <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-100 dark:border-blue-900">
+              <div className="flex items-start">
+                <TrendingUpIcon className="h-5 w-5 text-blue-500 mr-2 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                    Key Partnership Insights
+                  </p>
+                  <div className="text-sm text-blue-700 dark:text-blue-300 mt-2 space-y-2">
+                    {partnerships && partnerships.length > 0 ? (
+                      <>
+                        <p>
+                          Highest Partnership:{" "}
+                          {Math.max(...partnerships.map((p: any) => p.runs))}{" "}
+                          runs
+                          {partnerships.find(
+                            (p: any) =>
+                              p.runs ===
+                              Math.max(...partnerships.map((p: any) => p.runs))
+                          ) &&
+                            ` (${
+                              partnerships.find(
+                                (p: any) =>
+                                  p.runs ===
+                                  Math.max(
+                                    ...partnerships.map((p: any) => p.runs)
+                                  )
+                              ).batsmen[0]
+                            } & 
+                            ${
+                              partnerships.find(
+                                (p: any) =>
+                                  p.runs ===
+                                  Math.max(
+                                    ...partnerships.map((p: any) => p.runs)
+                                  )
+                              ).batsmen[1]
+                            })`}
+                        </p>
+                        <p>
+                          Fastest Partnership:
+                          {partnerships.find(
+                            (p: any) =>
+                              p.run_rate ===
+                              Math.max(
+                                ...partnerships.map((p: any) => p.run_rate)
+                              )
+                          ) &&
+                            ` ${partnerships
+                              .find(
+                                (p: any) =>
+                                  p.run_rate ===
+                                  Math.max(
+                                    ...partnerships.map((p: any) => p.run_rate)
+                                  )
+                              )
+                              .run_rate.toFixed(1)} SR
+                            (${
+                              partnerships.find(
+                                (p: any) =>
+                                  p.run_rate ===
+                                  Math.max(
+                                    ...partnerships.map((p: any) => p.run_rate)
+                                  )
+                              ).batsmen[0]
+                            } & 
+                            ${
+                              partnerships.find(
+                                (p: any) =>
+                                  p.run_rate ===
+                                  Math.max(
+                                    ...partnerships.map((p: any) => p.run_rate)
+                                  )
+                              ).batsmen[1]
+                            })`}
+                        </p>
+                        <p>Total Partnerships: {partnerships.length}</p>
+                      </>
+                    ) : (
+                      <p>No partnership data available for analysis.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+};
+
+const CricketAnalytics = ({ data }: any) => {
+  const [activeTab, setActiveTab] = useState("summary");
+  const [activeInnings, setActiveInnings] = useState(0);
+
+  // Get the data for the active innings
+  const inningsData = data?.innings_data?.[activeInnings] || {};
+
+  // Get team names for tab labels
+  const innings1Team = data?.innings_data?.[0]?.batting_team || "Team 1";
+  const innings2Team = data?.innings_data?.[1]?.batting_team || "Team 2";
+
+  // Extract necessary data for the active innings
+  const processedData = {
+    batting_team: inningsData.batting_team || "Team",
+    bowling_team: inningsData.bowling_team || "Opponent",
+    batters_analysis: inningsData.batters_analysis || [],
+    bowlers_analysis: inningsData.bowlers_analysis || [],
+    partnerships: inningsData.partnerships || [],
+    match_summary: inningsData.match_summary || {},
+    batting_momentum: inningsData.batting_momentum || 50,
+    bowling_momentum: inningsData.bowling_momentum || 50,
+    recommendations: parseRecommendations(data.raw_recommendations) || [],
+    momentum: inningsData.batting_momentum || 50,
+    over_metrics: inningsData.over_metrics || [],
+  };
+
+  // Format run rate by over for charting
+  const runRateByOver: any = {};
+  if (processedData.over_metrics && processedData.over_metrics.length > 0) {
+    processedData.over_metrics.forEach((metric: any) => {
+      runRateByOver[metric.Over] = metric.Over_Run_Rate;
+    });
+
+    // Add to match summary
+    processedData.match_summary.run_rate_by_over = runRateByOver;
+  }
+
+  return (
+    <motion.div
+      className="space-y-6 py-4 text-gray-800 dark:text-gray-200"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="visible"
+    >
+      {/* Innings tabs */}
+      <Tabs
+        defaultValue="innings1"
+        className="w-full mb-6"
+        onValueChange={(value) =>
+          setActiveInnings(value === "innings1" ? 0 : 1)
+        }
+      >
+        <TabsList className="grid grid-cols-2 bg-blue-50 dark:bg-blue-900/20 p-0 rounded-lg">
+          <TabsTrigger
+            value="innings1"
+            className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2 font-semibold"
           >
-            {batter.live_stats.strike_rate.toFixed(1)} SR
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-md">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Runs</p>
-            <p className="font-bold text-gray-800 dark:text-gray-200">
-              {batter.live_stats.runs}
-            </p>
-          </div>
-          <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-md">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Balls</p>
-            <p className="font-bold text-gray-800 dark:text-gray-200">
-              {batter.live_stats.balls_faced}
-            </p>
-          </div>
-          <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-md">
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Boundaries
-            </p>
-            <p className="font-bold text-gray-800 dark:text-gray-200">
-              {batter.live_stats.boundaries || 0}
-            </p>
-          </div>
-        </div>
+            {innings1Team}
+          </TabsTrigger>
+          <TabsTrigger
+            value="innings2"
+            className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2 font-semibold"
+            disabled={!data?.innings_data?.[1]}
+          >
+            {innings2Team}
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-        <div className="p-3 bg-blue-50 dark:bg-blue-900/10 rounded-md border border-blue-100 dark:border-blue-900">
-          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-            {batter.insight || getDefaultBatterInsight(batter)}
-          </p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-const BowlerInsightCard = ({ bowler, index }: any) => {
-  return (
-    <Card className="border border-blue-100 dark:border-blue-800 overflow-hidden h-full">
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-base font-medium text-blue-700 dark:text-blue-400">
-            {bowler.name}
-          </CardTitle>
-          <Badge variant={getBadgeVariantForEconomy(bowler.live_stats.economy)}>
-            {bowler.live_stats.economy.toFixed(2)} ECO
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="grid grid-cols-4 gap-2 mb-3">
-          <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-md">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Overs</p>
-            <p className="font-bold text-gray-800 dark:text-gray-200">
-              {bowler.live_stats.overs.toFixed(1)}
-            </p>
-          </div>
-          <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-md">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Runs</p>
-            <p className="font-bold text-gray-800 dark:text-gray-200">
-              {bowler.live_stats.runs_conceded}
-            </p>
-          </div>
-          <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-md">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Wickets</p>
-            <p className="font-bold text-gray-800 dark:text-gray-200">
-              {bowler.live_stats.wickets}
-            </p>
-          </div>
-          <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-md">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Dots</p>
-            <p className="font-bold text-gray-800 dark:text-gray-200">
-              {bowler.live_stats.dots ||
-                Math.floor(bowler.live_stats.overs * 6 * 0.3)}
-            </p>
-          </div>
-        </div>
-
-        <div className="p-3 bg-blue-50 dark:bg-blue-900/10 rounded-md border border-blue-100 dark:border-blue-900">
-          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-            {bowler.insight || getDefaultBowlerInsight(bowler)}
-          </p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-const AnimatedProgressBar = ({ value, colorClass = "bg-blue-600" }: any) => {
-  return (
-    <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2.5 overflow-hidden">
+      {/* Analysis tabs */}
       <motion.div
-        className={`h-2.5 rounded-full ${colorClass}`}
-        initial={{ width: 0 }}
-        animate={{ width: `${value}%` }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-      />
-    </div>
+        key={`innings-${activeInnings}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <Tabs
+          defaultValue="summary"
+          className="w-full"
+          onValueChange={setActiveTab}
+        >
+          <TabsList className="grid grid-cols-5 mb-6 bg-gray-100 dark:bg-gray-800 p-0 rounded-lg">
+            <TabsTrigger
+              value="summary"
+              className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2"
+            >
+              Summary
+            </TabsTrigger>
+            <TabsTrigger
+              value="batting"
+              className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2"
+            >
+              Batting
+            </TabsTrigger>
+            <TabsTrigger
+              value="bowling"
+              className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2"
+            >
+              Bowling
+            </TabsTrigger>
+            <TabsTrigger
+              value="partnerships"
+              className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2"
+            >
+              Partnerships
+            </TabsTrigger>
+            <TabsTrigger
+              value="momentum"
+              className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2"
+            >
+              Momentum
+            </TabsTrigger>
+          </TabsList>
+
+          <motion.div
+            key={`${activeInnings}-${activeTab}`}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <TabsContent value="summary" className="mt-0">
+              <MatchSummary
+                summary={processedData.match_summary}
+                batting_momentum={processedData.batting_momentum}
+                bowling_momentum={processedData.bowling_momentum}
+                recommendations={processedData.recommendations}
+              />
+            </TabsContent>
+
+            <TabsContent value="batting" className="mt-0">
+              <BattersAnalysis batters={processedData.batters_analysis} />
+            </TabsContent>
+
+            <TabsContent value="bowling" className="mt-0">
+              <BowlersAnalysis bowlers={processedData.bowlers_analysis} />
+            </TabsContent>
+
+            <TabsContent value="partnerships" className="mt-0">
+              <Partnerships partnerships={processedData.partnerships} />
+            </TabsContent>
+
+            <TabsContent value="momentum" className="mt-0">
+              <PredictionsTab
+                batting_momentum={processedData.batting_momentum}
+                bowling_momentum={processedData.bowling_momentum}
+              />
+            </TabsContent>
+          </motion.div>
+        </Tabs>
+      </motion.div>
+    </motion.div>
   );
-};
-
-// Helper functions
-const getMomentumDescription = (momentum: number) => {
-  if (momentum >= 80) return "Excellent momentum";
-  if (momentum >= 60) return "Good momentum";
-  if (momentum >= 40) return "Steady momentum";
-  if (momentum >= 20) return "Losing momentum";
-  return "Poor momentum";
-};
-
-const getBadgeColorForStrikeRate = (sr: number) => {
-  if (sr >= 150)
-    return "bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400";
-  if (sr >= 120)
-    return "bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400";
-  if (sr >= 90)
-    return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400";
-  return "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400";
-};
-
-const getBadgeColorForEconomy = (eco: number) => {
-  if (eco <= 6)
-    return "bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400";
-  if (eco <= 8)
-    return "bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400";
-  if (eco <= 10)
-    return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400";
-  return "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400";
-};
-
-const getBadgeVariantForStrikeRate = (sr: number) => {
-  if (sr >= 150) return "outline";
-  if (sr >= 120) return "default";
-  if (sr >= 90) return "secondary";
-  return "destructive";
-};
-
-const getBadgeVariantForEconomy = (eco: number) => {
-  if (eco <= 6) return "outline";
-  if (eco <= 8) return "default";
-  if (eco <= 10) return "secondary";
-  return "destructive";
-};
-
-const getFormPercentage = (batter: any) => {
-  // Calculate form percentage based on strike rate and runs
-  const basedOnRuns = Math.min(100, (batter.live_stats.runs / 50) * 100);
-  const basedOnSR = Math.min(100, (batter.live_stats.strike_rate / 150) * 100);
-  return basedOnRuns * 0.7 + basedOnSR * 0.3;
-};
-
-const getFormColor = (batter: any) => {
-  const formValue = getFormPercentage(batter);
-  if (formValue >= 75) return "bg-green-600";
-  if (formValue >= 50) return "bg-blue-600";
-  if (formValue >= 25) return "bg-yellow-600";
-  return "bg-red-600";
-};
-
-const getDefaultBatterInsight = (batter: any) => {
-  const insights = [
-    `${
-      batter.name
-    } is showing good control with a strike rotation of ${Math.floor(
-      70 + Math.random() * 20
-    )}%. Looking comfortable at the crease.`,
-    `${
-      batter.name
-    } has a particular strength on the leg side, scoring ${Math.floor(
-      50 + Math.random() * 30
-    )}% of runs in that region.`,
-    `${
-      batter.name
-    } has faced the bowlers well, with a dot ball percentage of only ${Math.floor(
-      20 + Math.random() * 20
-    )}%.`,
-    `${batter.name} has shown positive intent, converting pressure into scoring opportunities consistently.`,
-  ];
-  return insights[Math.floor(Math.random() * insights.length)];
-};
-
-const getDefaultBowlerInsight = (bowler: any) => {
-  const insights = [
-    `${bowler.name} has maintained good line and length, with ${Math.floor(
-      60 + Math.random() * 20
-    )}% of deliveries in the corridor of uncertainty.`,
-    `${
-      bowler.name
-    } has varied pace effectively, keeping batters guessing with a speed variation of ${Math.floor(
-      10 + Math.random() * 10
-    )} km/h.`,
-    `${
-      bowler.name
-    } has shown excellent control in the death overs, with a dot ball percentage of ${Math.floor(
-      30 + Math.random() * 20
-    )}%.`,
-    `${bowler.name} has targeted the stumps consistently, creating pressure on the batters.`,
-  ];
-  return insights[Math.floor(Math.random() * insights.length)];
-};
-
-const getMomentumChartData = (momentum: any) => {
-  // Generate historical momentum data for chart
-  if (!momentum) {
-    return [{ name: "Current", value: 50 }];
-  }
-
-  const currentValue = momentum;
-  // Generate synthetic historical data
-  return [
-    {
-      name: "5 overs ago",
-      value: Math.max(
-        10,
-        Math.min(90, currentValue + (Math.random() > 0.5 ? -15 : 15))
-      ).toFixed(1),
-    },
-    {
-      name: "4 overs ago",
-      value: Math.max(
-        10,
-        Math.min(90, currentValue + (Math.random() > 0.5 ? -12 : 12))
-      ).toFixed(1),
-    },
-    {
-      name: "3 overs ago",
-      value: Math.max(
-        10,
-        Math.min(90, currentValue + (Math.random() > 0.5 ? -8 : 8))
-      ).toFixed(1),
-    },
-    {
-      name: "2 overs ago",
-      value: Math.max(
-        10,
-        Math.min(90, currentValue + (Math.random() > 0.5 ? -5 : 5))
-      ).toFixed(1),
-    },
-    {
-      name: "1 over ago",
-      value: Math.max(
-        10,
-        Math.min(90, currentValue + (Math.random() > 0.5 ? -3 : 3))
-      ).toFixed(1),
-    },
-    { name: "Current", value: currentValue.toFixed(1) },
-  ];
-};
-
-const getPredictionInsights = (probabilities: any) => {
-  // Generate insights based on probabilities
-  const insights = [];
-
-  if (probabilities.win_probability > 0.7) {
-    insights.push(
-      "Team is in a commanding position with a strong win probability. Building on the current momentum is crucial."
-    );
-  } else if (probabilities.win_probability > 0.5) {
-    insights.push(
-      "Team has a slight edge, but the match remains competitive. Key moments in the next few overs could be decisive."
-    );
-  } else {
-    insights.push(
-      "Team needs to rebuild momentum as current win probability suggests they're on the back foot."
-    );
-  }
-
-  if (probabilities.boundary_this_over > 0.5) {
-    insights.push(
-      `High likelihood (${(probabilities.boundary_this_over * 100).toFixed(
-        0
-      )}%) of a boundary in the next over based on current field placement and bowler analytics.`
-    );
-  }
-
-  if (probabilities.wicket_this_over > 0.3) {
-    insights.push(
-      `Elevated risk of losing a wicket (${(
-        probabilities.wicket_this_over * 100
-      ).toFixed(
-        0
-      )}%) in the upcoming over. Batters should exercise caution while maintaining scoring rate.`
-    );
-  }
-
-  insights.push(
-    `Match projection suggests a final score of ${Math.floor(
-      180 + Math.random() * 40
-    )} based on current run rate and wickets in hand.`
-  );
-
-  return insights;
 };
 
 export default CricketAnalytics;

@@ -7,11 +7,13 @@ from tensorflow.keras.models import load_model
 import json
 import openai
 import re
+from flask_cors import CORS
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)
 
 # =============================================================================
 # GLOBAL CONSTANTS & FILE PATHS

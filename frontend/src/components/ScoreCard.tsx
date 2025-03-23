@@ -29,9 +29,13 @@ interface ScoreCardProps {
 
 export default function ScoreCard({ match }: ScoreCardProps) {
   const [activeInnings, setActiveInnings] = useState(0);
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<any>(null);
 
+  // Get innings data from the match object
   const innings1 = match.innings[0];
-  const innings2 = match.innings[1];
+  const innings2 = match.innings.length > 1 ? match.innings[1] : null;
 
   const fadeInUp = {
     hidden: { opacity: 0, y: 20 },
@@ -51,10 +55,6 @@ export default function ScoreCard({ match }: ScoreCardProps) {
       },
     },
   };
-
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<any>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -140,18 +140,43 @@ export default function ScoreCard({ match }: ScoreCardProps) {
     );
   }
 
-  // Get the top batter from API data
-  const topBatter = data.batters_analysis.sort(
-    (a: any, b: any) => b.live_stats.runs - a.live_stats.runs
-  )[0];
+  // Extract data from the API response for the current innings
+  const currentInningsData =
+    data.innings_data && data.innings_data.length > 0
+      ? data.innings_data[activeInnings] || data.innings_data[0]
+      : null;
 
-  // Get the best bowler from API data - criteria: lowest economy with at least 1 wicket
-  const bestBowler = data.bowlers_analysis.sort((a: any, b: any) => {
-    if (a.live_stats.wickets === b.live_stats.wickets) {
-      return a.live_stats.economy - b.live_stats.economy;
-    }
-    return b.live_stats.wickets - a.live_stats.wickets;
-  })[0];
+  // Get the top batter from current innings data
+  const topBatter =
+    currentInningsData?.batters_analysis.sort(
+      (a: any, b: any) => b.live_stats.runs - a.live_stats.runs
+    )[0] || null;
+
+  // Get the best bowler from current innings data - criteria: lowest economy with at least 1 wicket
+  const bestBowler =
+    currentInningsData?.bowlers_analysis.sort((a: any, b: any) => {
+      if (a.live_stats.wickets === b.live_stats.wickets) {
+        return a.live_stats.economy - b.live_stats.economy;
+      }
+      return b.live_stats.wickets - a.live_stats.wickets;
+    })[0] || null;
+
+  // Get current partnerships
+  const currentPartnerships = currentInningsData?.partnerships || [];
+  const latestPartnership =
+    currentPartnerships.length > 0
+      ? currentPartnerships[currentPartnerships.length - 1]
+      : null;
+
+  // Calculate momentum
+  const momentum = currentInningsData?.batting_momentum || 50;
+
+  // Handle probabilities from the data or set defaults if not available
+  const probabilities = data.probabilities || {
+    boundary: 0.25,
+    dot_ball: 0.35,
+    wicket: 0.05,
+  };
 
   return (
     <motion.div
@@ -202,53 +227,119 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                   <TabsTrigger
                     value="innings2"
                     className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 dark:data-[state=active]:border-blue-400"
+                    disabled={!innings2 || data.innings_data.length < 2}
                   >
-                    {innings2.team.name}
+                    {innings2 && innings2.team.name}
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
 
             <CardContent className="p-6">
-            <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            key={activeInnings}
-          >
-            {activeInnings === 0 ? (
-              <>
-                <BattingCard
-                  battersAnalysis={data.batters_analysis}
-                  partnerships={data.partnerships}
-                  matchSummary={data.match_summary}
-                />
-                <div className="mt-8">
-                  <BowlingCard bowlersAnalysis={data.bowlers_analysis} />
-                </div>
-              </>
-            ) : (
-              <>
-                <BattingCard
-                  battersAnalysis={[]}
-                  partnerships={[]}
-                />
-                <div className="mt-8">
-                  <BowlingCard bowlersAnalysis={[]} />
-                </div>
-              </>
-            )}
-          </motion.div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                key={activeInnings}
+              >
+                {activeInnings === 0 ? (
+                  <>
+                    <BattingCard
+                      battersAnalysis={
+                        currentInningsData?.batters_analysis || []
+                      }
+                      partnerships={currentInningsData?.partnerships || []}
+                      matchSummary={currentInningsData?.match_summary || {}}
+                      battingTeam={
+                        currentInningsData?.batting_team || innings1.team.name
+                      }
+                    />
+                    <div className="mt-8">
+                      <BowlingCard
+                        bowlersAnalysis={
+                          currentInningsData?.bowlers_analysis || []
+                        }
+                        bowlingTeam={
+                          currentInningsData?.bowling_team || innings1.team.name
+                        }
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {data.innings_data.length > 1 ? (
+                      <>
+                        <BattingCard
+                          battersAnalysis={
+                            data.innings_data[1]?.batters_analysis || []
+                          }
+                          partnerships={
+                            data.innings_data[1]?.partnerships || []
+                          }
+                          matchSummary={
+                            data.innings_data[1]?.match_summary || {}
+                          }
+                          battingTeam={data.innings_data[1]?.batting_team}
+                        />
+                        <div className="mt-8">
+                          <BowlingCard
+                            bowlersAnalysis={
+                              data.innings_data[1]?.bowlers_analysis || []
+                            }
+                            bowlingTeam={data.innings_data[1]?.bowling_team}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-12">
+                        <p className="text-gray-500 dark:text-gray-400">
+                          Innings 2 data not available yet
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </motion.div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="SUMMARY" className="space-y-6 mt-2">
           <Card className="border-none shadow-lg overflow-hidden">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800">
+              <Tabs
+                value={activeInnings === 0 ? "innings1" : "innings2"}
+                className="w-full"
+                onValueChange={(value) =>
+                  setActiveInnings(value === "innings1" ? 0 : 1)
+                }
+              >
+                <TabsList className="w-full grid grid-cols-2 bg-transparent">
+                  <TabsTrigger
+                    value="innings1"
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 dark:data-[state=active]:border-blue-400"
+                  >
+                    {innings1.team.name}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="innings2"
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 dark:data-[state=active]:border-blue-400"
+                    disabled={!innings2 || data.innings_data.length < 2}
+                  >
+                    {innings2 && innings2.team.name}
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
             <CardContent className="p-6">
               <motion.div
                 className="flex justify-between items-center mb-8"
                 variants={fadeInUp}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                key={activeInnings}
               >
                 <motion.div
                   className="flex items-center"
@@ -257,21 +348,31 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                 >
                   <div className="relative h-20 w-20 mr-6">
                     <Image
-                      src={`/mi.png`}
-                      alt={innings1.team.shortName}
+                      src={`/${activeInnings === 0 ? "mi" : "srh"}.png`}
+                      alt={
+                        currentInningsData?.batting_team ||
+                        (activeInnings === 0
+                          ? innings1.team.shortName
+                          : innings2?.team.shortName)
+                      }
                       layout="fill"
                       className="object-contain filter drop-shadow-md"
                     />
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold">
-                      {innings1.team.shortName}
+                      {activeInnings === 0
+                        ? innings1.team.shortName
+                        : innings2?.team.shortName}
                     </h2>
                     <p className="text-xl">
-                      {data.match_summary.total_runs}/
-                      {data.match_summary.total_wickets}
+                      {currentInningsData?.match_summary?.total_runs || 0}/
+                      {currentInningsData?.match_summary?.total_wickets || 0}
                       <span className="text-gray-500 dark:text-gray-400 text-base ml-1">
-                        ({data.match_summary.overs.toFixed(1)})
+                        (
+                        {Math.floor(currentInningsData?.match_summary?.overs) ||
+                          0}
+                        )
                       </span>
                     </p>
                   </div>
@@ -290,19 +391,43 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                 >
                   <div>
                     <h2 className="text-2xl font-bold text-right">
-                      {innings2.team.shortName}
+                      {activeInnings === 0
+                        ? innings2?.team.shortName
+                        : innings1.team.shortName}
                     </h2>
                     <p className="text-xl text-right">
-                      {innings2.score}/{innings2.wickets}
+                      {activeInnings === 0
+                        ? (data.innings_data[1]?.match_summary?.total_runs ||
+                            0) +
+                          "/" +
+                          (data.innings_data[1]?.match_summary?.total_wickets ||
+                            0)
+                        : (data.innings_data[0]?.match_summary?.total_runs ||
+                            0) +
+                          "/" +
+                          (data.innings_data[0]?.match_summary?.total_wickets ||
+                            0)}
                       <span className="text-gray-500 dark:text-gray-400 text-base ml-1">
-                        ({innings2.overs})
+                        (
+                        {activeInnings === 0
+                          ? Math.floor(
+                              data.innings_data[1]?.match_summary?.overs
+                            ) || 0
+                          : Math.floor(
+                              data.innings_data[0]?.match_summary?.overs
+                            ) || 0}
+                        )
                       </span>
                     </p>
                   </div>
                   <div className="relative h-20 w-20 ml-6">
                     <Image
-                      src={`/srh.png`}
-                      alt={innings2.team.shortName}
+                      src={`/${activeInnings === 0 ? "srh" : "mi"}.png`}
+                      alt={
+                        activeInnings === 0
+                          ? innings2?.team.shortName || "Unknown Team"
+                          : innings1.team.shortName || "Unknown Team"
+                      }
                       layout="fill"
                       className="object-contain filter drop-shadow-md"
                     />
@@ -315,13 +440,16 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3, duration: 0.5 }}
+                key={`runrate-${activeInnings}`}
               >
                 <p className="text-center font-medium text-white text-lg">
-                  {/* {match.result} */}
                   Current Run Rate:{" "}
-                  {data.match_summary.current_run_rate.toFixed(2)}
+                  {currentInningsData?.match_summary?.current_run_rate.toFixed(
+                    2
+                  ) || "0.00"}
                   <span className="ml-2 px-2 py-1 bg-blue-700 rounded-md text-sm">
-                    Momentum: {data.momentum.toFixed(1)}
+                    Momentum:{" "}
+                    {(currentInningsData?.batting_momentum || 50).toFixed(1)}
                   </span>
                 </p>
               </motion.div>
@@ -331,6 +459,7 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                 variants={staggerContainer}
                 initial="hidden"
                 animate="visible"
+                key={`cards-${activeInnings}`}
               >
                 <motion.div variants={fadeInUp}>
                   <Card className="border border-blue-100 dark:border-blue-900/30 shadow-md hover:shadow-lg transition-shadow duration-300">
@@ -341,94 +470,99 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <motion.div
-                        className="flex items-center p-3 bg-green-50 dark:bg-green-900/10 rounded-md border border-green-100 dark:border-green-900/20"
-                        whileHover={{ x: 5 }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 300,
-                          damping: 20,
-                        }}
-                      >
-                        <div className="mr-4 bg-green-100 dark:bg-green-800/30 rounded-full p-2 text-green-600 dark:text-green-400">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 011 1v3a1 1 0 01-1 1H9a1 1 0 01-1-1V5a1 1 0 011-1v-.5a1.5 1.5 0 011.5-1.5z" />
-                            <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3zm5-6a3 3 0 100-6 3 3 0 000 6z" />
-                          </svg>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                            Top Scorer
-                          </p>
-                          <h4 className="font-bold text-green-700 dark:text-green-400">
-                            {topBatter.name}
-                          </h4>
-                          <div className="flex items-center">
-                            <Badge
-                              variant="outline"
-                              className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 mr-2"
+                      {topBatter && (
+                        <motion.div
+                          className="flex items-center p-3 bg-green-50 dark:bg-green-900/10 rounded-md border border-green-100 dark:border-green-900/20"
+                          whileHover={{ x: 5 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 300,
+                            damping: 20,
+                          }}
+                        >
+                          <div className="mr-4 bg-green-100 dark:bg-green-800/30 rounded-full p-2 text-green-600 dark:text-green-400">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-5 w-5"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
                             >
-                              {topBatter.live_stats.runs} (
-                              {topBatter.live_stats.balls_faced})
-                            </Badge>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">
-                              SR: {topBatter.live_stats.strike_rate.toFixed(2)}{" "}
-                              · {topBatter.live_stats.boundaries} boundaries
-                            </p>
+                              <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 011 1v3a1 1 0 01-1 1H9a1 1 0 01-1-1V5a1 1 0 011-1v-.5a1.5 1.5 0 011.5-1.5z" />
+                              <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3zm5-6a3 3 0 100-6 3 3 0 000 6z" />
+                            </svg>
                           </div>
-                        </div>
-                      </motion.div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                              Top Scorer
+                            </p>
+                            <h4 className="font-bold text-green-700 dark:text-green-400">
+                              {topBatter.name}
+                            </h4>
+                            <div className="flex items-center">
+                              <Badge
+                                variant="outline"
+                                className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 mr-2"
+                              >
+                                {topBatter.live_stats.runs} (
+                                {topBatter.live_stats.balls_faced})
+                              </Badge>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">
+                                SR:{" "}
+                                {topBatter.live_stats.strike_rate.toFixed(2)} ·{" "}
+                                {topBatter.live_stats.boundaries} boundaries
+                              </p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
 
-                      <motion.div
-                        className="flex items-center p-3 bg-blue-50 dark:bg-blue-900/10 rounded-md border border-blue-100 dark:border-blue-900/20"
-                        whileHover={{ x: 5 }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 300,
-                          damping: 20,
-                        }}
-                      >
-                        <div className="mr-4 bg-blue-100 dark:bg-blue-800/30 rounded-full p-2 text-blue-600 dark:text-blue-400">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                            Best Bowler
-                          </p>
-                          <h4 className="font-bold text-blue-700 dark:text-blue-400">
-                            {bestBowler.name}
-                          </h4>
-                          <div className="flex items-center">
-                            <Badge
-                              variant="outline"
-                              className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 mr-2"
+                      {bestBowler && bestBowler.live_stats.wickets > 0 && (
+                        <motion.div
+                          className="flex items-center p-3 bg-blue-50 dark:bg-blue-900/10 rounded-md border border-blue-100 dark:border-blue-900/20"
+                          whileHover={{ x: 5 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 300,
+                            damping: 20,
+                          }}
+                        >
+                          <div className="mr-4 bg-blue-100 dark:bg-blue-800/30 rounded-full p-2 text-blue-600 dark:text-blue-400">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-5 w-5"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
                             >
-                              {bestBowler.live_stats.wickets} wicket
-                              {bestBowler.live_stats.wickets !== 1 ? "s" : ""}
-                            </Badge>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">
-                              {bestBowler.live_stats.runs_conceded} runs ·{" "}
-                              {bestBowler.live_stats.overs.toFixed(1)} overs
-                            </p>
+                              <path
+                                fillRule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
                           </div>
-                        </div>
-                      </motion.div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                              Best Bowler
+                            </p>
+                            <h4 className="font-bold text-blue-700 dark:text-blue-400">
+                              {bestBowler.name}
+                            </h4>
+                            <div className="flex items-center">
+                              <Badge
+                                variant="outline"
+                                className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 mr-2"
+                              >
+                                {bestBowler.live_stats.wickets} wicket
+                                {bestBowler.live_stats.wickets !== 1 ? "s" : ""}
+                              </Badge>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">
+                                {bestBowler.live_stats.runs_conceded} runs ·{" "}
+                                {bestBowler.live_stats.overs.toFixed(1)} overs
+                              </p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -442,22 +576,24 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="flex items-center p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200">
-                        <TrendingUpIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
-                        <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
-                          Partnership
+                      {latestPartnership && (
+                        <div className="flex items-center p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200">
+                          <TrendingUpIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
+                          <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Partnership
+                          </div>
+                          <div className="flex-1 text-sm">
+                            {latestPartnership.runs} Runs off{" "}
+                            {latestPartnership.balls} Balls (
+                            {(
+                              (latestPartnership.runs /
+                                latestPartnership.balls) *
+                              6
+                            ).toFixed(2)}{" "}
+                            RPO)
+                          </div>
                         </div>
-                        <div className="flex-1 text-sm">
-                          {data.partnerships[0].runs} Runs off{" "}
-                          {data.partnerships[0].balls} Balls (
-                          {(
-                            (data.partnerships[0].runs /
-                              data.partnerships[0].balls) *
-                            6
-                          ).toFixed(2)}{" "}
-                          RPO)
-                        </div>
-                      </div>
+                      )}
 
                       <div className="flex items-center p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200">
                         <ZapIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
@@ -465,25 +601,28 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                           Next Ball
                         </div>
                         <div className="flex-1 text-sm">
-                          Boundary:{" "}
-                          {(data.probabilities.boundary * 100).toFixed(0)}% |
-                          Dot: {(data.probabilities.dot_ball * 100).toFixed(0)}%
-                          | Wicket:{" "}
-                          {(data.probabilities.wicket * 100).toFixed(0)}%
+                          Boundary: {(probabilities.boundary * 100).toFixed(0)}%
+                          | Dot: {(probabilities.dot_ball * 100).toFixed(0)}% |
+                          Wicket: {(probabilities.wicket * 100).toFixed(0)}%
                         </div>
                       </div>
 
-                      <div className="flex items-center p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200">
-                        <TargetIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
-                        <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
-                          Innings Pace
+                      {currentInningsData?.match_summary && (
+                        <div className="flex items-center p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200">
+                          <TargetIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
+                          <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Innings Pace
+                          </div>
+                          <div className="flex-1 text-sm">
+                            Projected:{" "}
+                            {Math.round(
+                              currentInningsData.match_summary
+                                .current_run_rate * 20
+                            )}{" "}
+                            (20 overs)
+                          </div>
                         </div>
-                        <div className="flex-1 text-sm">
-                          Projected:{" "}
-                          {Math.round(data.match_summary.current_run_rate * 20)}{" "}
-                          (20 overs)
-                        </div>
-                      </div>
+                      )}
 
                       <div className="flex items-center p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200">
                         <AlertCircleIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
@@ -491,8 +630,9 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                           Key Insight
                         </div>
                         <div className="flex-1 text-sm">
-                          Bowlers struggling with economy rates higher than
-                          historical averages
+                          {activeInnings === 0
+                            ? "Batters performing above their historical strike rates"
+                            : "Bowlers struggling with economy rates higher than historical averages"}
                         </div>
                       </div>
                     </CardContent>
@@ -540,7 +680,10 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                         <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
                           Toss
                         </div>
-                        <div className="flex-1 text-sm">MI, elected to bat</div>
+                        <div className="flex-1 text-sm">
+                          {match?.toss && match.toss.winner}, chose to{" "}
+                          {match?.toss && match.toss.decision}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -553,47 +696,6 @@ export default function ScoreCard({ match }: ScoreCardProps) {
         <TabsContent value="ANALYSIS" className="mt-2">
           <Card className="border-none shadow-lg overflow-hidden">
             <CricketAnalytics data={data} />
-            {/* <CardContent className="p-6">
-              <motion.div 
-                className="text-center py-12"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5 }}
-              >
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3, duration: 0.5 }}
-                >
-                  <svg
-                    className="mx-auto h-16 w-16 text-blue-300 dark:text-blue-700"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1}
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5, duration: 0.5 }}
-                >
-                  <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">
-                    Analysis not available
-                  </h3>
-                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    Live Analysis will be available soon.
-                  </p>
-                </motion.div>
-              </motion.div>
-              
-            </CardContent> */}
           </Card>
         </TabsContent>
       </Tabs>
