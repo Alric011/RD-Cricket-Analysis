@@ -163,7 +163,7 @@ const parseRecommendations = (rawRecommendations: any) => {
   if (currentRec) recommendations.push(currentRec);
 
   // Return max 5 recommendations
-  return recommendations.slice(0, 5);
+  return recommendations;
 };
 
 const AnimatedProgressBar = ({ value, colorClass }: any) => (
@@ -350,7 +350,11 @@ const BowlerInsightCard = ({ bowler, index }: any) => {
   );
 };
 
-const PredictionsTab = ({ batting_momentum, bowling_momentum }: any) => {
+const PredictionsTab = ({
+  summary,
+  batting_momentum,
+  bowling_momentum,
+}: any) => {
   // Create data for the pie chart using the momentum values
   const momentumData = [
     { name: "Batting", value: batting_momentum, fill: "#3b82f6" },
@@ -449,14 +453,18 @@ const PredictionsTab = ({ batting_momentum, bowling_momentum }: any) => {
                   className="flex justify-between"
                 >
                   <span className="text-sm">Current Run Rate</span>
-                  <span className="text-sm font-medium">12.48</span>
+                  <span className="text-sm font-medium">
+                    {summary.current_run_rate.toFixed(2)}
+                  </span>
                 </motion.div>
                 <motion.div
                   variants={fadeInUp}
                   className="flex justify-between"
                 >
                   <span className="text-sm">Projected Score</span>
-                  <span className="text-sm font-medium">~200-220</span>
+                  <span className="text-sm font-medium">
+                    {Math.round(summary.current_run_rate * 20)}
+                  </span>
                 </motion.div>
               </motion.div>
             </div>
@@ -498,8 +506,8 @@ const MatchSummary = ({
   const runRateData =
     summary && summary.run_rate_by_over
       ? Object.keys(summary.run_rate_by_over).map((over) => ({
-          name: over,
-          value: summary.run_rate_by_over[over],
+          name: "Over " + over,
+          run_rate: Number(summary.run_rate_by_over[over].toFixed(2)),
         }))
       : [];
 
@@ -507,7 +515,7 @@ const MatchSummary = ({
   if (runRateData.length === 0 && summary) {
     runRateData.push({
       name: "Current",
-      value: summary.current_run_rate,
+      run_rate: Number(summary.current_run_rate.toFixed(2)),
     });
   }
 
@@ -582,7 +590,7 @@ const MatchSummary = ({
               <Card className="border border-blue-100 dark:border-blue-900">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-medium text-blue-700 dark:text-blue-400">
-                    Run Rate Progression
+                    Over-by-Over Run Rate Progression
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -591,7 +599,11 @@ const MatchSummary = ({
                       <LineChart data={runRateData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                         <XAxis dataKey="name" />
-                        <YAxis />
+                        <YAxis label={{
+                      value: "Run Rate",
+                      angle: -90,
+                      position: "insideLeft",
+                    }} />
                         <Tooltip
                           contentStyle={{
                             color: "#000000",
@@ -603,7 +615,7 @@ const MatchSummary = ({
                         />
                         <Line
                           type="monotone"
-                          dataKey="value"
+                          dataKey="run_rate"
                           stroke="#3b82f6"
                           strokeWidth={3}
                           activeDot={{
@@ -626,7 +638,7 @@ const MatchSummary = ({
               </Card>
             </motion.div>
 
-            <motion.div className="mt-6">
+            {/* <motion.div className="mt-6">
               <Card className="border border-blue-100 dark:border-blue-900">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-medium text-blue-700 dark:text-blue-400 flex items-center">
@@ -658,7 +670,7 @@ const MatchSummary = ({
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+            </motion.div> */}
           </CardContent>
         </Card>
       </motion.div>
@@ -902,7 +914,7 @@ const BowlersAnalysis = ({ bowlers }: any) => {
                   />
                   <YAxis
                     label={{
-                      value: "Economy Rate",
+                      value: "Economy",
                       angle: -90,
                       position: "insideLeft",
                     }}
@@ -975,7 +987,7 @@ const BowlersAnalysis = ({ bowlers }: any) => {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        {bowler.live_stats?.overs?.toFixed(1) || 0}
+                        {Math.floor(bowler.live_stats?.overs).toFixed(1) || 0.0}
                       </TableCell>
                       <TableCell className="text-right">
                         {bowler.live_stats?.runs_conceded || 0}
@@ -1283,7 +1295,7 @@ const CricketAnalytics = ({ data }: any) => {
 
   // Get team names for tab labels
   const innings1Team = data?.innings_data?.[0]?.batting_team || "Team 1";
-  const innings2Team = data?.innings_data?.[1]?.batting_team || "Team 2";
+  const innings2Team = data?.innings_data?.[0]?.bowling_team || "Team 2";
 
   // Extract necessary data for the active innings
   const processedData = {
@@ -1331,14 +1343,14 @@ const CricketAnalytics = ({ data }: any) => {
             value="innings1"
             className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2 font-semibold"
           >
-            {innings1Team}
+            {innings1Team} (1st Innings)
           </TabsTrigger>
           <TabsTrigger
             value="innings2"
             className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2 font-semibold"
             disabled={!data?.innings_data?.[1]}
           >
-            {innings2Team}
+            {innings2Team} (2nd Innings)
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -1418,6 +1430,7 @@ const CricketAnalytics = ({ data }: any) => {
 
             <TabsContent value="momentum" className="mt-0">
               <PredictionsTab
+                summary={processedData.match_summary}
                 batting_momentum={processedData.batting_momentum}
                 bowling_momentum={processedData.bowling_momentum}
               />

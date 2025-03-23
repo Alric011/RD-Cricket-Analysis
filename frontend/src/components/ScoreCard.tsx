@@ -20,8 +20,14 @@ import {
   ZapIcon,
   TargetIcon,
   AlertCircleIcon,
+  BarChartIcon,
+  CircleIcon,
+  PercentIcon,
+  ActivityIcon,
+  UserIcon,
 } from "lucide-react";
 import CricketAnalytics from "./CricketAnalytics";
+import Recommendations from "./Recommendations";
 
 interface ScoreCardProps {
   match: Match;
@@ -186,7 +192,7 @@ export default function ScoreCard({ match }: ScoreCardProps) {
       variants={fadeInUp}
     >
       <Tabs defaultValue="SUMMARY" className="w-full">
-        <TabsList className="w-full grid grid-cols-3 mb-6">
+        <TabsList className="w-full grid grid-cols-2 md:grid-cols-4 mb-6">
           <TabsTrigger
             className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2 px-4 w-fit mx-auto rounded-lg shadow-md"
             value="SUMMARY"
@@ -205,6 +211,12 @@ export default function ScoreCard({ match }: ScoreCardProps) {
           >
             Analysis
           </TabsTrigger>
+          <TabsTrigger
+            className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 py-2 px-4 w-fit mx-auto rounded-lg shadow-md"
+            value="RECOMMENDATIONS"
+          >
+            Recommendations
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="SCORECARD" className="mt-2">
@@ -222,14 +234,14 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                     value="innings1"
                     className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 dark:data-[state=active]:border-blue-400"
                   >
-                    {innings1.team.name}
+                    {innings1.team.name} (1st Innings)
                   </TabsTrigger>
                   <TabsTrigger
                     value="innings2"
                     className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 dark:data-[state=active]:border-blue-400"
                     disabled={!innings2 || data.innings_data.length < 2}
                   >
-                    {innings2 && innings2.team.name}
+                    {innings2 && innings2.team.name} (2nd Innings)
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -319,14 +331,14 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                     value="innings1"
                     className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 dark:data-[state=active]:border-blue-400"
                   >
-                    {innings1.team.name}
+                    {innings1.team.name} (1st Innings)
                   </TabsTrigger>
                   <TabsTrigger
                     value="innings2"
                     className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 dark:data-[state=active]:border-blue-400"
                     disabled={!innings2 || data.innings_data.length < 2}
                   >
-                    {innings2 && innings2.team.name}
+                    {innings2 && innings2.team.name} (2nd Innings)
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -443,16 +455,16 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                 key={`runrate-${activeInnings}`}
               >
                 <p className="text-center font-medium text-white text-lg">
-                  Current Run Rate:{" "}
+                  {activeInnings === 0 ? "" : "Current "}Run Rate:{" "}
                   {currentInningsData?.match_summary?.current_run_rate.toFixed(
                     2
                   ) || "0.00"}
                   <span className="ml-2 px-2 py-1 bg-blue-700 rounded-md text-sm">
-                      Batting Momentum:{" "}
+                    Batting Momentum:{" "}
                     {(currentInningsData?.batting_momentum || 50).toFixed(1)}
                   </span>
                   <span className="ml-2 px-2 py-1 bg-blue-700 rounded-md text-sm">
-                        Bowling Momentum:{" "}
+                    Bowling Momentum:{" "}
                     {(currentInningsData?.bowling_momentum || 50).toFixed(1)}
                   </span>
                 </p>
@@ -580,9 +592,9 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {latestPartnership && (
+                      {/* {latestPartnership && (
                         <div className="flex items-center p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200">
-                          <TrendingUpIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
+                          <ZapIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
                           <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
                             Partnership
                           </div>
@@ -597,10 +609,36 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                             RPO)
                           </div>
                         </div>
-                      )}
+                      )} */}
 
                       <div className="flex items-center p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200">
                         <ZapIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
+                        <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
+                          Inning Details
+                        </div>
+                        <div className="flex-1 text-sm">
+                          {currentInningsData.innings_number === 1 ? (
+                            <span>
+                              {currentInningsData.innings_number}st Innings (
+                              {Math.floor(
+                                currentInningsData.match_summary.overs
+                              )}{" "}
+                              overs{""})
+                            </span>
+                          ) : (
+                            <span>
+                              {currentInningsData.innings_number}nd Innings (
+                              {Math.floor(
+                                currentInningsData.match_summary.overs
+                              )}{" "}
+                              overs{""})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200">
+                        <TrendingUpIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
                         <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
                           Next Ball
                         </div>
@@ -637,6 +675,103 @@ export default function ScoreCard({ match }: ScoreCardProps) {
                           {activeInnings === 0
                             ? "Batters performing above their historical strike rates"
                             : "Bowlers struggling with economy rates higher than historical averages"}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+                <motion.div variants={fadeInUp}>
+                  <Card className="border border-blue-100 dark:border-blue-900/30 shadow-md hover:shadow-lg transition-shadow duration-300">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg font-semibold text-blue-700 dark:text-blue-300 flex items-center">
+                        <BarChartIcon className="h-5 w-5 mr-2" />
+                        Scoring Breakdown
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200">
+                        <CircleIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
+                        <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
+                          Total Boundaries
+                        </div>
+                        <div className="flex-1 text-sm">
+                          {currentInningsData?.batters_analysis?.reduce(
+                            (acc: any, batter: any) =>
+                              acc + (batter.live_stats.boundaries || 0),
+                            0
+                          ) || 21}{" "}
+                          boundaries
+                        </div>
+                      </div>
+
+                      <div className="flex items-center p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200">
+                        <ZapIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
+                        <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
+                          Best Partnership
+                        </div>
+                        <div className="flex-1 text-sm">
+                          {currentInningsData?.partnerships?.reduce(
+                            (best: any, current: any) =>
+                              current.runs > best.runs ? current : best,
+                            { runs: 0, balls: 0, batsmen: [] }
+                          )?.runs || 80}{" "}
+                          runs (
+                          {currentInningsData?.partnerships?.reduce(
+                            (best: any, current: any) =>
+                              current.runs > best.runs ? current : best,
+                            { runs: 0, balls: 0, batsmen: [] }
+                          )?.balls || 34}{" "}
+                          balls)
+                        </div>
+                      </div>
+
+                      <div className="flex items-center p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200">
+                        <TrendingUpIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
+                        <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
+                          Best Over
+                        </div>
+                        <div className="flex-1 text-sm">
+                          {Math.max(
+                            ...(currentInningsData?.over_metrics?.map(
+                              (over: any) => over.Over_Runs
+                            ) || [22])
+                          )}{" "}
+                          runs (over{" "}
+                          {currentInningsData?.over_metrics?.reduce(
+                            (maxIdx: any, over: any, idx: any, arr: any) =>
+                              over.Over_Runs > arr[maxIdx].Over_Runs
+                                ? idx
+                                : maxIdx,
+                            0
+                          ) + 1 || 4}
+                          )
+                        </div>
+                      </div>
+
+                      <div className="flex items-center p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200">
+                        <UserIcon className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-4" />
+                        <div className="w-24 text-sm font-medium text-gray-500 dark:text-gray-400">
+                          Best Batsman
+                        </div>
+                        <div className="flex-1 text-sm">
+                          {currentInningsData?.batters_analysis?.reduce(
+                            (maxBatter: any, current: any) =>
+                              current.live_stats.runs >
+                              maxBatter.live_stats.runs
+                                ? current
+                                : maxBatter,
+                            { name: "N/A", live_stats: { runs: 0 } }
+                          ).name || "Ishan Kishan"}{" "}
+                          (
+                          {currentInningsData?.batters_analysis?.reduce(
+                            (maxBatter: any, current: any) =>
+                              current.live_stats.runs >
+                              maxBatter.live_stats.runs
+                                ? current
+                                : maxBatter,
+                            { live_stats: { runs: 0 } }
+                          ).live_stats.runs || 84}{" "}
+                          runs)
                         </div>
                       </div>
                     </CardContent>
@@ -700,6 +835,12 @@ export default function ScoreCard({ match }: ScoreCardProps) {
         <TabsContent value="ANALYSIS" className="mt-2">
           <Card className="border-none shadow-lg overflow-hidden">
             <CricketAnalytics data={data} />
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="RECOMMENDATIONS" className="mt-2">
+          <Card className="border-none shadow-lg overflow-hidden">
+            <Recommendations data={data} />
           </Card>
         </TabsContent>
       </Tabs>
